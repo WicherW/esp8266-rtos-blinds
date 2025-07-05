@@ -1,0 +1,19 @@
+{
+  "name": "esp8266_container",
+  "image": "esp8266_blinds:latest",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools"
+      ]
+    }
+  },
+  "workspaceFolder": "/workspace",
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind"
+  ],
+  "runArgs": [
+    "--device=/dev/ttyUSB0",
+    "--privileged"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "configurations": [
+    {
+      "name": "Linux",
+      "includePath": [
+        "${workspaceFolder}/**",
+        "/opt/sdk/components/**",
+        "/opt/sdk/**"
+      ],
+      "defines": [],
+      "compilerPath": "/opt/toolchains/lx106/bin/xtensa-lx106-elf-gcc",
+      "cStandard": "c11",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "linux-gcc-x64"
+    }
+  ],
+  "version": 4
+}
