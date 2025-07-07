@@ -100,6 +100,12 @@
 
         </section>
 
+        <section>
+            <h2>Status</h2>
+            <p>Small blind status: <span id="smallBlindStatus">--</span></p>
+            <p>Big blind status:   <span id="bigBlindStatus">  --</span></p>
+        </section>
+
         <section class="schedule">
 
             <h2>Schedule</h2>
@@ -161,6 +167,7 @@
             <p>CurrentStepsState: <span id="smallCurrentStepsState"></span></p>
             <button id="smallDevdataButton">take data</button>
         </section>
+
 
        </main>
     
@@ -236,9 +243,16 @@
     document.getElementById('smallReadyUpID').addEventListener("click", function(){readyPositionsPOST(this.id);});
     document.getElementById('smallReadyMidID').addEventListener("click", function(){readyPositionsPOST(this.id);});
     document.getElementById('smallReadyDownID').addEventListener("click", function(){readyPositionsPOST(this.id);});
+    //-----------------------------------------------------------------------------------------------------------
+    //******************************************** blinds status ************************************************
+    // Fetch the blinds status from the esp
+    // change value of span with id smallBlindStatus and bigBlindStatus
+    // everytime update the status when data has been fetched
+
+
 
     //-----------------------------------------------------------------------------------------------------------
-    //************************************************ schedule *************************************************
+    //********************************************** schedule ***************************************************
 
     const schedule = [
     { day: "Monday",        start: "--:--", end: "--:--" },
@@ -302,7 +316,7 @@
     function UpConfirmPOST(id){
 
         const data = {
-            confirmUpBlidId: id
+            confirmUpBlindId: id
         };
 
         valuesJsonPOST(data, 'parameters');
@@ -389,6 +403,8 @@
 
         })
         .catch(error => console.error('Error fetching data:', error));
+
+
 
     getDevDataBig();
     getDevDataSmall();

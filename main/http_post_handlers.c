@@ -144,10 +144,10 @@ esp_err_t parameters_post_handler(httpd_req_t *req) {
         } 
 
         // TODO nap
-        cJSON *nap_JSON = cJSON_GetObjectItem(json, "drzemkaValue");
-        if(cJSON_IsNumber(nap_JSON)){
-            ESP_LOGI(TAG_SERVER, "nap value: %i", nap_JSON->valueint);
-        }
+        // cJSON *nap_JSON = cJSON_GetObjectItem(json, "drzemkaValue");
+        // if(cJSON_IsNumber(nap_JSON)){
+        //     ESP_LOGI(TAG_SERVER, "nap value: %i", nap_JSON->valueint);
+        // }
 
 
         // BIG BLIND
@@ -168,7 +168,6 @@ esp_err_t parameters_post_handler(httpd_req_t *req) {
                 xTaskCreate(&calibration_blind, "calibrateRollblindUpBig", 2048, (void*)param_big_blind, 3, NULL);
             }
         }
-
         // down calibration
         cJSON *move_down_big_blind_JSON = cJSON_GetObjectItem(json, "bigMoveDown");
         if(cJSON_IsNumber(move_down_big_blind_JSON)){
@@ -207,7 +206,6 @@ esp_err_t parameters_post_handler(httpd_req_t *req) {
                 xTaskCreate(&calibration_blind, "calibrateRollblindUpSmall", 2048, (void*)param_small_blind, 3, NULL);
             }
         }
-
         // down calibration
         cJSON *move_down_small_blind_JSON = cJSON_GetObjectItem(json, "smallMoveDown");
         if(cJSON_IsNumber(move_down_small_blind_JSON)){
@@ -227,38 +225,25 @@ esp_err_t parameters_post_handler(httpd_req_t *req) {
            
         }
 
-        // confirm full up position - small blind
-        cJSON *confirm_full_up_position_JSON = cJSON_GetObjectItem(json, "smallUpConfirmButton");
+        // confirm full up position
+        cJSON *confirm_full_up_position_JSON = cJSON_GetObjectItem(json, "confirmUpBlindId");
         if (cJSON_IsString(confirm_full_up_position_JSON) && (confirm_full_up_position_JSON->valuestring != NULL)) {
 
             ESP_LOGI(TAG_SERVER, "confirm_full_up_position_JSON: %s", confirm_full_up_position_JSON->valuestring);
 
-            if(strcmp(confirm_full_up_position_JSON->valuestring, "goraConfirmMala") == 0){
+            // small
+            if(strcmp(confirm_full_up_position_JSON->valuestring, "smallUpConfirmButton") == 0){
 
                 xTaskCreate(&confirm_full_up_small_blind, "ConfirmFullUpSmallBlind", 2048, NULL, 3, NULL);
 
-            } else if(strcmp(confirm_full_up_position_JSON->valuestring, "goraConfirm") == 0){
+            // big
+            } else if(strcmp(confirm_full_up_position_JSON->valuestring, "bigUpConfirmButton") == 0){
 
                 xTaskCreate(&confirm_full_up_big_blind, "ConfirmFullUpBigBlind", 2048, NULL, 3, NULL);
             }
         } 
 
-        // confirm full down position - big blind
-        cJSON *confirm_full_down_position_JSON = cJSON_GetObjectItem(json, "bigUpConfirmButton");
-        if (cJSON_IsString(confirm_full_up_position_JSON) && (confirm_full_down_position_JSON->valuestring != NULL)) {
-
-            ESP_LOGI(TAG_SERVER, "confirm_full_up_position_JSON: %s", confirm_full_down_position_JSON->valuestring);
-
-            if(strcmp(confirm_full_down_position_JSON->valuestring, "goraConfirmMala") == 0){
-
-                xTaskCreate(&confirm_full_up_small_blind, "ConfirmFullUpSmallBlind", 2048, NULL, 3, NULL);
-
-            } else if(strcmp(confirm_full_down_position_JSON->valuestring, "goraConfirm") == 0){
-
-                xTaskCreate(&confirm_full_up_big_blind, "ConfirmFullUpBigBlind", 2048, NULL, 3, NULL);
-            }
-        }
-
+        // TODO confirm full down position
 
         if (json == NULL) {
             ESP_LOGE(TAG_SERVER, "error parsing JSON");
@@ -281,172 +266,172 @@ httpd_uri_t parameters_t = {
 // !! TODO changes almost everything, json has been changed, so this handler has to be rewritten
 esp_err_t schedule_post_handler(httpd_req_t *req) {
 
-    ESP_LOGI("harmonogramposthandler", "weszlo na poczatek");
+    // ESP_LOGI("harmonogramposthandler", "weszlo na poczatek");
     
-    // Alokacja pamięci na dane POST
-    char *total_data = (char *)pvPortMalloc(req->content_len + 1);
-    if (total_data == NULL) {
-        return ESP_ERR_NO_MEM;
-    }
+    // // Alokacja pamięci na dane POST
+    // char *total_data = (char *)pvPortMalloc(req->content_len + 1);
+    // if (total_data == NULL) {
+    //     return ESP_ERR_NO_MEM;
+    // }
 
-    ESP_LOGI("harmonogramposthandler", "length:%d ",req->content_len);
+    // ESP_LOGI("harmonogramposthandler", "length:%d ",req->content_len);
     
-    int ret;
-    int remaining = req->content_len;
-    int received = 0;  // Śledzi liczbę odebranych danych
+    // int ret;
+    // int remaining = req->content_len;
+    // int received = 0;  // Śledzi liczbę odebranych danych
 
-    ESP_LOGI("harmonogramposthandler", "przed whilem odbierania danych");
+    // ESP_LOGI("harmonogramposthandler", "przed whilem odbierania danych");
 
-    while (remaining > 0) {
-        // Odebranie części danych POST
-        ret = httpd_req_recv(req, total_data + received, remaining);
-        if (ret <= 0) {
-            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
-                continue;  // Timeout, spróbuj ponownie
-            }
-            free(total_data);
-            return ESP_FAIL;  // Inny błąd
-        }
-        received += ret;
-        remaining -= ret;
-    }
+    // while (remaining > 0) {
+    //     // Odebranie części danych POST
+    //     ret = httpd_req_recv(req, total_data + received, remaining);
+    //     if (ret <= 0) {
+    //         if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+    //             continue;  // Timeout, spróbuj ponownie
+    //         }
+    //         free(total_data);
+    //         return ESP_FAIL;  // Inny błąd
+    //     }
+    //     received += ret;
+    //     remaining -= ret;
+    // }
 
-    total_data[received] = '\0';
+    // total_data[received] = '\0';
 
-    ESP_LOGI("harmonogramposthandler", "Zawartosc total_data: %s", total_data);
-    ESP_LOGI("harmonogramposthandler", "przed stworzeniem taska");
+    // ESP_LOGI("harmonogramposthandler", "Zawartosc total_data: %s", total_data);
+    // ESP_LOGI("harmonogramposthandler", "przed stworzeniem taska");
     
 
-    if (xSemaphoreTake(scheduleSemaphore, portMAX_DELAY) == pdTRUE) {
-        ESP_LOGI("harmonogramposthandler", "semafor zablokowany");
-    } else {
-        ESP_LOGI("harmonogramposthandler", "nie udalo sie zablokowac semafora");
-        return ESP_FAIL;
-    }
+    // if (xSemaphoreTake(scheduleSemaphore, portMAX_DELAY) == pdTRUE) {
+    //     ESP_LOGI("harmonogramposthandler", "semafor zablokowany");
+    // } else {
+    //     ESP_LOGI("harmonogramposthandler", "nie udalo sie zablokowac semafora");
+    //     return ESP_FAIL;
+    // }
 
-    cJSON *json = cJSON_Parse(total_data);
+    // cJSON *json = cJSON_Parse(total_data);
 
-    if (json == NULL) {
-        ESP_LOGE("harmonogramposthandler", "Nie udalo sie sparsowac JSON-a");
-        xSemaphoreGive(scheduleSemaphore);
-        vPortFree(total_data);
-        return ESP_FAIL;
-    }
+    // if (json == NULL) {
+    //     ESP_LOGE("harmonogramposthandler", "Nie udalo sie sparsowac JSON-a");
+    //     xSemaphoreGive(scheduleSemaphore);
+    //     vPortFree(total_data);
+    //     return ESP_FAIL;
+    // }
 
-    ESP_LOGI("harmonogramposthandler", "Free heap size: %d", esp_get_free_heap_size());
+    // ESP_LOGI("harmonogramposthandler", "Free heap size: %d", esp_get_free_heap_size());
     
-    ESP_LOGI("harmonogramposthandler", "po udanym parsowaniu JSON-a");
+    // ESP_LOGI("harmonogramposthandler", "po udanym parsowaniu JSON-a");
 
-    cJSON *ponDown = cJSON_GetObjectItem(json, "ponTimeDown");
-    cJSON *ponUp = cJSON_GetObjectItem(json, "ponTimeUp");
+    // cJSON *ponDown = cJSON_GetObjectItem(json, "ponTimeDown");
+    // cJSON *ponUp = cJSON_GetObjectItem(json, "ponTimeUp");
 
-    cJSON *wtDown = cJSON_GetObjectItem(json, "wtTimeDown");
-    cJSON *wtUp = cJSON_GetObjectItem(json, "wtTimeUp");
+    // cJSON *wtDown = cJSON_GetObjectItem(json, "wtTimeDown");
+    // cJSON *wtUp = cJSON_GetObjectItem(json, "wtTimeUp");
 
-    cJSON *srDown = cJSON_GetObjectItem(json, "srTimeDown");
-    cJSON *srUp = cJSON_GetObjectItem(json, "srTimeUp");
+    // cJSON *srDown = cJSON_GetObjectItem(json, "srTimeDown");
+    // cJSON *srUp = cJSON_GetObjectItem(json, "srTimeUp");
 
-    cJSON *czwDown = cJSON_GetObjectItem(json, "czwTimeDown");
-    cJSON *czwUp = cJSON_GetObjectItem(json, "czwTimeUp");
+    // cJSON *czwDown = cJSON_GetObjectItem(json, "czwTimeDown");
+    // cJSON *czwUp = cJSON_GetObjectItem(json, "czwTimeUp");
 
-    cJSON *ptDown = cJSON_GetObjectItem(json, "ptTimeDown");
-    cJSON *ptUp = cJSON_GetObjectItem(json, "ptTimeUp");
+    // cJSON *ptDown = cJSON_GetObjectItem(json, "ptTimeDown");
+    // cJSON *ptUp = cJSON_GetObjectItem(json, "ptTimeUp");
 
-    cJSON *sbDown = cJSON_GetObjectItem(json, "sbTimeDown");
-    cJSON *sbUp = cJSON_GetObjectItem(json, "sbTimeUp");
+    // cJSON *sbDown = cJSON_GetObjectItem(json, "sbTimeDown");
+    // cJSON *sbUp = cJSON_GetObjectItem(json, "sbTimeUp");
 
-    cJSON *ndzDown = cJSON_GetObjectItem(json, "ndzTimeDown");
-    cJSON *ndzUp = cJSON_GetObjectItem(json, "ndzTimeUp");
+    // cJSON *ndzDown = cJSON_GetObjectItem(json, "ndzTimeDown");
+    // cJSON *ndzUp = cJSON_GetObjectItem(json, "ndzTimeUp");
 
-    ESP_LOGI("harmonogramposthandler", "po fali cJSONow getobjectitem");
+    // ESP_LOGI("harmonogramposthandler", "po fali cJSONow getobjectitem");
 
 
-    if (!ponDown || !ponUp || !wtDown || !wtUp || !srDown || !srUp ||
-    !czwDown || !czwUp || !ptDown || !ptUp || !sbDown || !sbUp ||
-    !ndzDown || !ndzUp) {
-        ESP_LOGI("harmonogramposthandler", "Brak wymaganych pol w JSON");
-    // Obsługa błędu
-    }else{
-        ESP_LOGI("harmonogramposthandler", "Wszystkie pola sa!");
-    }
+    // if (!ponDown || !ponUp || !wtDown || !wtUp || !srDown || !srUp ||
+    // !czwDown || !czwUp || !ptDown || !ptUp || !sbDown || !sbUp ||
+    // !ndzDown || !ndzUp) {
+    //     ESP_LOGI("harmonogramposthandler", "Brak wymaganych pol w JSON");
+    // // Obsługa błędu
+    // }else{
+    //     ESP_LOGI("harmonogramposthandler", "Wszystkie pola sa!");
+    // }
 
-    ESP_LOGI("harmonogramposthandler", "po kontroli ifem");
+    // ESP_LOGI("harmonogramposthandler", "po kontroli ifem");
     
-    //Niedziela
-    scheduleArray[0].day = 0;
-    sscanf(cJSON_GetStringValue(ndzUp), "%d:%d", &scheduleArray[0].open_time.tm_hour, &scheduleArray[0].open_time.tm_min);
-    sscanf(cJSON_GetStringValue(ndzDown), "%d:%d", &scheduleArray[0].close_time.tm_hour, &scheduleArray[0].close_time.tm_min);
+    // //Niedziela
+    // scheduleArray[0].day = 0;
+    // sscanf(cJSON_GetStringValue(ndzUp), "%d:%d", &scheduleArray[0].open_time.tm_hour, &scheduleArray[0].open_time.tm_min);
+    // sscanf(cJSON_GetStringValue(ndzDown), "%d:%d", &scheduleArray[0].close_time.tm_hour, &scheduleArray[0].close_time.tm_min);
 
-    // Poniedziałek
-    scheduleArray[1].day = 1;
-    sscanf(cJSON_GetStringValue(ponUp), "%d:%d", &scheduleArray[1].open_time.tm_hour, &scheduleArray[1].open_time.tm_min);
-    sscanf(cJSON_GetStringValue(ponDown), "%d:%d", &scheduleArray[1].close_time.tm_hour, &scheduleArray[1].close_time.tm_min);
+    // // Poniedziałek
+    // scheduleArray[1].day = 1;
+    // sscanf(cJSON_GetStringValue(ponUp), "%d:%d", &scheduleArray[1].open_time.tm_hour, &scheduleArray[1].open_time.tm_min);
+    // sscanf(cJSON_GetStringValue(ponDown), "%d:%d", &scheduleArray[1].close_time.tm_hour, &scheduleArray[1].close_time.tm_min);
 
-    // Wtorek
-    scheduleArray[2].day = 2;
-    sscanf(cJSON_GetStringValue(wtUp), "%d:%d", &scheduleArray[2].open_time.tm_hour, &scheduleArray[2].open_time.tm_min);
-    sscanf(cJSON_GetStringValue(wtDown), "%d:%d", &scheduleArray[2].close_time.tm_hour, &scheduleArray[2].close_time.tm_min);
+    // // Wtorek
+    // scheduleArray[2].day = 2;
+    // sscanf(cJSON_GetStringValue(wtUp), "%d:%d", &scheduleArray[2].open_time.tm_hour, &scheduleArray[2].open_time.tm_min);
+    // sscanf(cJSON_GetStringValue(wtDown), "%d:%d", &scheduleArray[2].close_time.tm_hour, &scheduleArray[2].close_time.tm_min);
 
-    // Środa
-    scheduleArray[3].day = 3;
-    sscanf(cJSON_GetStringValue(srUp), "%d:%d", &scheduleArray[3].open_time.tm_hour, &scheduleArray[3].open_time.tm_min);
-    sscanf(cJSON_GetStringValue(srDown), "%d:%d", &scheduleArray[3].close_time.tm_hour, &scheduleArray[3].close_time.tm_min);
+    // // Środa
+    // scheduleArray[3].day = 3;
+    // sscanf(cJSON_GetStringValue(srUp), "%d:%d", &scheduleArray[3].open_time.tm_hour, &scheduleArray[3].open_time.tm_min);
+    // sscanf(cJSON_GetStringValue(srDown), "%d:%d", &scheduleArray[3].close_time.tm_hour, &scheduleArray[3].close_time.tm_min);
 
-    // Czwartek
-    scheduleArray[4].day = 4;
-    sscanf(cJSON_GetStringValue(czwUp), "%d:%d", &scheduleArray[4].open_time.tm_hour, &scheduleArray[4].open_time.tm_min);
-    sscanf(cJSON_GetStringValue(czwDown), "%d:%d", &scheduleArray[4].close_time.tm_hour, &scheduleArray[4].close_time.tm_min);
+    // // Czwartek
+    // scheduleArray[4].day = 4;
+    // sscanf(cJSON_GetStringValue(czwUp), "%d:%d", &scheduleArray[4].open_time.tm_hour, &scheduleArray[4].open_time.tm_min);
+    // sscanf(cJSON_GetStringValue(czwDown), "%d:%d", &scheduleArray[4].close_time.tm_hour, &scheduleArray[4].close_time.tm_min);
 
-    // Piątek
-    scheduleArray[5].day = 5;
-    sscanf(cJSON_GetStringValue(ptUp), "%d:%d", &scheduleArray[5].open_time.tm_hour, &scheduleArray[5].open_time.tm_min);
-    sscanf(cJSON_GetStringValue(ptDown), "%d:%d", &scheduleArray[5].close_time.tm_hour, &scheduleArray[5].close_time.tm_min);
+    // // Piątek
+    // scheduleArray[5].day = 5;
+    // sscanf(cJSON_GetStringValue(ptUp), "%d:%d", &scheduleArray[5].open_time.tm_hour, &scheduleArray[5].open_time.tm_min);
+    // sscanf(cJSON_GetStringValue(ptDown), "%d:%d", &scheduleArray[5].close_time.tm_hour, &scheduleArray[5].close_time.tm_min);
 
-    // Sobota
-    scheduleArray[6].day = 6;
-    sscanf(cJSON_GetStringValue(sbUp), "%d:%d", &scheduleArray[6].open_time.tm_hour, &scheduleArray[6].open_time.tm_min);
-    sscanf(cJSON_GetStringValue(sbDown), "%d:%d", &scheduleArray[6].close_time.tm_hour, &scheduleArray[6].close_time.tm_min);
+    // // Sobota
+    // scheduleArray[6].day = 6;
+    // sscanf(cJSON_GetStringValue(sbUp), "%d:%d", &scheduleArray[6].open_time.tm_hour, &scheduleArray[6].open_time.tm_min);
+    // sscanf(cJSON_GetStringValue(sbDown), "%d:%d", &scheduleArray[6].close_time.tm_hour, &scheduleArray[6].close_time.tm_min);
 
-    ESP_LOGI("harmonogramposthandler", "po uzupelnieniu struktury");
+    // ESP_LOGI("harmonogramposthandler", "po uzupelnieniu struktury");
 
 
-    // Zwalnianie pamięci
-    cJSON_Delete(json);
-    vPortFree(total_data);
+    // // Zwalnianie pamięci
+    // cJSON_Delete(json);
+    // vPortFree(total_data);
 
-    xSemaphoreGive(scheduleSemaphore);
+    // xSemaphoreGive(scheduleSemaphore);
 
-    ESP_LOGI("harmonogramposthandler", "zwolnieniu semafora");
+    // ESP_LOGI("harmonogramposthandler", "zwolnieniu semafora");
 
-    // Tworzenie i uruchomienie timera
-    if (scheduleTimer == NULL) {
+    // // Tworzenie i uruchomienie timera
+    // if (scheduleTimer == NULL) {
 
-        ESP_LOGI("harmonogramposthandler", "jest NULL, tworzenie timera!");
+    //     ESP_LOGI("harmonogramposthandler", "jest NULL, tworzenie timera!");
 
-        scheduleTimer = xTimerCreate("MyTimer", pdMS_TO_TICKS(60000), pdTRUE, (void *)0, schedule_timer_callback);
+    //     scheduleTimer = xTimerCreate("MyTimer", pdMS_TO_TICKS(60000), pdTRUE, (void *)0, schedule_timer_callback);
 
-        ESP_LOGI("harmonogramposthandler", "timer stworzony");
+    //     ESP_LOGI("harmonogramposthandler", "timer stworzony");
 
-        if (scheduleTimer != NULL) {
+    //     if (scheduleTimer != NULL) {
 
-            ESP_LOGI("harmonogramposthandler", "timer nie jest rowny null");
+    //         ESP_LOGI("harmonogramposthandler", "timer nie jest rowny null");
 
-            if (xTimerStart(scheduleTimer, 0) != pdPASS) {
-                ESP_LOGI("harmonogramposthandler", "Nie udalo sie uruchomic timera.");
-            }else{
-                ESP_LOGI("harmonogramposthandler", "timer zostal odpalony");
-            }
-        } else {
-            ESP_LOGI("harmonogramposthandler", "Nie udalo sie stworzyc timera.");
-        }
-    } else{
-        ESP_LOGI("harmonogramposthandler", "timer jest juz stworzony, zostala tylko zaaktualizowana struktura z godzinami");
-    }
+    //         if (xTimerStart(scheduleTimer, 0) != pdPASS) {
+    //             ESP_LOGI("harmonogramposthandler", "Nie udalo sie uruchomic timera.");
+    //         }else{
+    //             ESP_LOGI("harmonogramposthandler", "timer zostal odpalony");
+    //         }
+    //     } else {
+    //         ESP_LOGI("harmonogramposthandler", "Nie udalo sie stworzyc timera.");
+    //     }
+    // } else{
+    //     ESP_LOGI("harmonogramposthandler", "timer jest juz stworzony, zostala tylko zaaktualizowana struktura z godzinami");
+    // }
     
-    // Odpowiedź HTTP (może być zależna od implementacji
-    httpd_resp_send_chunk(req, NULL, 0);  // Zakończenie odpowiedzi
+    // // Odpowiedź HTTP (może być zależna od implementacji
+    // httpd_resp_send_chunk(req, NULL, 0);  // Zakończenie odpowiedzi
 
-    ESP_LOGI("harmonogramposthandler", "przed return OK");
+    // ESP_LOGI("harmonogramposthandler", "przed return OK");
     return ESP_OK;
 }
 httpd_uri_t schedule_t = {
