@@ -90,30 +90,30 @@ esp_err_t devdata_get_feedback_bigblind_handler(httpd_req_t *req) {
 
     ESP_LOGI(TAG, "semaphore has been taken successfully!");
 
-    char *json_string = malloc(JSON_BLIND_DATA);
+    char *json_string = malloc(120);
     if (json_string == NULL) {
         ESP_LOGE(TAG, "error of malloc!");
         xSemaphoreGive(big_blind_current_parameters_semaphore);
         return ESP_FAIL;
     }
 
-    sprintf(json_string, "{\"maxdownbigblind\":%i,\"bigcurrentstepsstate\":%i}", 
-            current_parameters_big_blind.max_down_position_big, 
-            current_parameters_big_blind.current_steps_blind_big);
+    snprintf(json_string, 120, "{\"maxdownbigblind\":%i,\"bigcurrentstepsstate\":%i}",
+             current_parameters_big_blind.max_down_position_big,
+             current_parameters_big_blind.current_steps_blind_big);
 
-    esp_err_t res = ESP_OK;
-    if (httpd_resp_send(req, json_string, strlen(json_string)) == ESP_OK) {
+    esp_err_t ret = httpd_resp_send(req, json_string, strlen(json_string));
+    if (ret == ESP_OK) {
         ESP_LOGI(TAG, "JSON sent successfully!");
     } else {
         ESP_LOGE(TAG, "JSON respond sending failed!");
-        res = ESP_FAIL;
     }
 
-    xSemaphoreGive(big_blind_current_parameters_semaphore);
     free(json_string);
-
-    return res;
+    xSemaphoreGive(big_blind_current_parameters_semaphore);
+    ESP_LOGI(TAG, "semaphore has been released!");
+    return ret;
 }
+
 httpd_uri_t big_dev_data_t = {
     .uri       = "/bigdevdata",
     .method    = HTTP_GET,

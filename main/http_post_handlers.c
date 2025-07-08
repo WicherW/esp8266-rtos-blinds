@@ -13,7 +13,7 @@
 #include "scheduler_config.h"
 
 
-esp_err_t parameters_post_handler(httpd_req_t *req) {
+esp_err_t confirm_full_up_post_handler(httpd_req_t *req){
     char buf[100];
     int ret, remaining = req->content_len;
 
@@ -31,42 +31,65 @@ esp_err_t parameters_post_handler(httpd_req_t *req) {
         remaining -= ret;
 
         cJSON *json = cJSON_Parse(buf);
+     
+        // confirm full up position
+        cJSON *confirm_full_up_position_JSON = cJSON_GetObjectItem(json, "confirmUpBlindId");
+        if (cJSON_IsString(confirm_full_up_position_JSON) && (confirm_full_up_position_JSON->valuestring != NULL)) {
 
-        // small blind - slider value
-        cJSON *small_blind_slider_JSON = cJSON_GetObjectItem(json, "smallSlider");
-        if(cJSON_IsNumber(small_blind_slider_JSON)){
+            ESP_LOGI(TAG_SERVER, "confirm_full_up_position_JSON: %s", confirm_full_up_position_JSON->valuestring);
 
-            ESP_LOGI(TAG_SERVER, "small_blind_slider_JSON: %i", small_blind_slider_JSON->valueint);
+            // small
+            if(strcmp(confirm_full_up_position_JSON->valuestring, "smallUpConfirmButton") == 0){
 
-            Blind_to_do_parameters_t *small_param = (Blind_to_do_parameters_t *)pvPortMalloc(sizeof(Blind_to_do_parameters_t));
-            small_param->blind_model = 0;
-            small_param->pind_blind = blind_config.pins_blind_small;
-            small_param->max_down_position = &current_parameters_small_blind.max_down_position_small;
-            small_param->current_step_state = &current_parameters_small_blind.current_steps_blind_small;
-            small_param->slider_value = small_blind_slider_JSON->valueint;
-            small_param->pv_to_slider_value = &current_parameters_small_blind.slider_value;
+                xTaskCreate(&confirm_full_up_small_blind, "ConfirmFullUpSmallBlind", 2048, NULL, 3, NULL);
 
-            xTaskCreate(&rolling_blind, "moveSmallBlind", 2048, (void*)small_param, 3, NULL);
+            // big
+            } else if(strcmp(confirm_full_up_position_JSON->valuestring, "bigUpConfirmButton") == 0){
+
+                xTaskCreate(&confirm_full_up_big_blind, "ConfirmFullUpBigBlind", 2048, NULL, 3, NULL);
+            }
+        } 
+        
+        
+        if (json == NULL) {
+            ESP_LOGE(TAG_SERVER, "error parsing JSON");
+            return ESP_FAIL;
         }
 
-        // big blind - slider value
-        cJSON *big_blind_slider_JSON = cJSON_GetObjectItem(json, "bigSlider");
-        if(cJSON_IsNumber(big_blind_slider_JSON)){
+        cJSON_Delete(json);
+    }
 
-            ESP_LOGI(TAG_SERVER, "big_blind_slider_JSON: %i", big_blind_slider_JSON->valueint);
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
+}
+httpd_uri_t confirm_full_up_t = {
+    .uri       = "/confirm-full-up",
+    .method    = HTTP_POST,
+    .handler   = confirm_full_up_post_handler,
+    .user_ctx  = NULL
+};
 
-            Blind_to_do_parameters_t *big_param = (Blind_to_do_parameters_t *)pvPortMalloc(sizeof(Blind_to_do_parameters_t));
-            big_param->blind_model = 1;
-            big_param->pind_blind = blind_config.pins_blind_big;
-            big_param->max_down_position = &current_parameters_big_blind.max_down_position_big;
-            big_param->current_step_state = &current_parameters_big_blind.current_steps_blind_big;
-            big_param->slider_value = big_blind_slider_JSON->valueint;
-            big_param->pv_to_slider_value = &current_parameters_big_blind.slider_value;
-            
-            xTaskCreate(&rolling_blind, "moveBigBlind", 2048, (void*)big_param, 3, NULL);
+
+esp_err_t predefined_positions_post_handler(httpd_req_t *req){
+        char buf[100];
+    int ret, remaining = req->content_len;
+
+    while (remaining > 0) {
+        
+        if ((ret = httpd_req_recv(req, buf, MIN(remaining, sizeof(buf)))) <= 0) {
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+                continue;
+            }
+
+            return ESP_FAIL;
         }
 
-        // predefined positions of blinds
+        httpd_resp_send_chunk(req, buf, ret);
+        remaining -= ret;
+
+        cJSON *json = cJSON_Parse(buf);
+     
+                // predefined positions of blinds
         cJSON *position_JSON = cJSON_GetObjectItem(json, "elementId");
         if (cJSON_IsString(position_JSON) && (position_JSON->valuestring != NULL)) {
             ESP_LOGI(TAG_SERVER, "position_JSON: %s", position_JSON->valuestring);
@@ -142,14 +165,45 @@ esp_err_t parameters_post_handler(httpd_req_t *req) {
                 xTaskCreate(&rolling_blind, "downSmall", 2048, (void*)param, 3, NULL);
             }
         } 
+        
+        if (json == NULL) {
+            ESP_LOGE(TAG_SERVER, "error parsing JSON");
+            return ESP_FAIL;
+        }
 
-        // TODO nap
-        // cJSON *nap_JSON = cJSON_GetObjectItem(json, "drzemkaValue");
-        // if(cJSON_IsNumber(nap_JSON)){
-        //     ESP_LOGI(TAG_SERVER, "nap value: %i", nap_JSON->valueint);
-        // }
+        cJSON_Delete(json);
+    }
+
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
+}
+httpd_uri_t predefined_positions_t = {
+    .uri       = "/predefined-positions",
+    .method    = HTTP_POST,
+    .handler   = predefined_positions_post_handler,
+    .user_ctx  = NULL
+};
 
 
+esp_err_t calibration_post_handler(httpd_req_t *req){
+    char buf[100];
+    int ret, remaining = req->content_len;
+
+    while (remaining > 0) {
+        
+        if ((ret = httpd_req_recv(req, buf, MIN(remaining, sizeof(buf)))) <= 0) {
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+                continue;
+            }
+
+            return ESP_FAIL;
+        }
+
+        httpd_resp_send_chunk(req, buf, ret);
+        remaining -= ret;
+
+        cJSON *json = cJSON_Parse(buf);
+     
         // BIG BLIND
         // up calibration
         cJSON *move_up_big_blind_JSON = cJSON_GetObjectItem(json, "bigMoveUp");
@@ -224,27 +278,53 @@ esp_err_t parameters_post_handler(httpd_req_t *req) {
             }
            
         }
+        
+        
+        if (json == NULL) {
+            ESP_LOGE(TAG_SERVER, "error parsing JSON");
+            return ESP_FAIL;
+        }
 
-        // confirm full up position
-        cJSON *confirm_full_up_position_JSON = cJSON_GetObjectItem(json, "confirmUpBlindId");
-        if (cJSON_IsString(confirm_full_up_position_JSON) && (confirm_full_up_position_JSON->valuestring != NULL)) {
+        cJSON_Delete(json);
+    }
 
-            ESP_LOGI(TAG_SERVER, "confirm_full_up_position_JSON: %s", confirm_full_up_position_JSON->valuestring);
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;  
+}
+httpd_uri_t calibration_t = {
+    .uri       = "/calibration",
+    .method    = HTTP_POST,
+    .handler   = calibration_post_handler,
+    .user_ctx  = NULL
+};
 
-            // small
-            if(strcmp(confirm_full_up_position_JSON->valuestring, "smallUpConfirmButton") == 0){
 
-                xTaskCreate(&confirm_full_up_small_blind, "ConfirmFullUpSmallBlind", 2048, NULL, 3, NULL);
+esp_err_t nap_post_handler(httpd_req_t *req){
+    char buf[100];
+    int ret, remaining = req->content_len;
 
-            // big
-            } else if(strcmp(confirm_full_up_position_JSON->valuestring, "bigUpConfirmButton") == 0){
-
-                xTaskCreate(&confirm_full_up_big_blind, "ConfirmFullUpBigBlind", 2048, NULL, 3, NULL);
+    while (remaining > 0) {
+        
+        if ((ret = httpd_req_recv(req, buf, MIN(remaining, sizeof(buf)))) <= 0) {
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+                continue;
             }
-        } 
 
-        // TODO confirm full down position
+            return ESP_FAIL;
+        }
 
+        httpd_resp_send_chunk(req, buf, ret);
+        remaining -= ret;
+
+        cJSON *json = cJSON_Parse(buf);
+     
+        // TODO nap
+        // cJSON *nap_JSON = cJSON_GetObjectItem(json, "drzemkaValue");
+        // if(cJSON_IsNumber(nap_JSON)){
+        //     ESP_LOGI(TAG_SERVER, "nap value: %i", nap_JSON->valueint);
+        // }
+        
+        
         if (json == NULL) {
             ESP_LOGE(TAG_SERVER, "error parsing JSON");
             return ESP_FAIL;
@@ -256,10 +336,83 @@ esp_err_t parameters_post_handler(httpd_req_t *req) {
     httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
 }
-httpd_uri_t parameters_t = {
-    .uri       = "/parameters",
+httpd_uri_t nap_t = {
+    .uri       = "/nap",
     .method    = HTTP_POST,
-    .handler   = parameters_post_handler,
+    .handler   = nap_post_handler,
+    .user_ctx  = NULL
+};
+
+
+esp_err_t sliders_post_handler(httpd_req_t *req){
+    char buf[100];
+    int ret, remaining = req->content_len;
+
+    while (remaining > 0) {
+        
+        if ((ret = httpd_req_recv(req, buf, MIN(remaining, sizeof(buf)))) <= 0) {
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+                continue;
+            }
+
+            return ESP_FAIL;
+        }
+
+        httpd_resp_send_chunk(req, buf, ret);
+        remaining -= ret;
+
+        cJSON *json = cJSON_Parse(buf);
+     
+                // small blind - slider value
+        cJSON *small_blind_slider_JSON = cJSON_GetObjectItem(json, "smallSlider");
+        if(cJSON_IsNumber(small_blind_slider_JSON)){
+
+            ESP_LOGI(TAG_SERVER, "small_blind_slider_JSON: %i", small_blind_slider_JSON->valueint);
+
+            Blind_to_do_parameters_t *small_param = (Blind_to_do_parameters_t *)pvPortMalloc(sizeof(Blind_to_do_parameters_t));
+            small_param->blind_model = 0;
+            small_param->pind_blind = blind_config.pins_blind_small;
+            small_param->max_down_position = &current_parameters_small_blind.max_down_position_small;
+            small_param->current_step_state = &current_parameters_small_blind.current_steps_blind_small;
+            small_param->slider_value = small_blind_slider_JSON->valueint;
+            small_param->pv_to_slider_value = &current_parameters_small_blind.slider_value;
+
+            xTaskCreate(&rolling_blind, "moveSmallBlind", 2048, (void*)small_param, 3, NULL);
+        }
+
+        // big blind - slider value
+        cJSON *big_blind_slider_JSON = cJSON_GetObjectItem(json, "bigSlider");
+        if(cJSON_IsNumber(big_blind_slider_JSON)){
+
+            ESP_LOGI(TAG_SERVER, "big_blind_slider_JSON: %i", big_blind_slider_JSON->valueint);
+
+            Blind_to_do_parameters_t *big_param = (Blind_to_do_parameters_t *)pvPortMalloc(sizeof(Blind_to_do_parameters_t));
+            big_param->blind_model = 1;
+            big_param->pind_blind = blind_config.pins_blind_big;
+            big_param->max_down_position = &current_parameters_big_blind.max_down_position_big;
+            big_param->current_step_state = &current_parameters_big_blind.current_steps_blind_big;
+            big_param->slider_value = big_blind_slider_JSON->valueint;
+            big_param->pv_to_slider_value = &current_parameters_big_blind.slider_value;
+            
+            xTaskCreate(&rolling_blind, "moveBigBlind", 2048, (void*)big_param, 3, NULL);
+        }
+
+        
+        if (json == NULL) {
+            ESP_LOGE(TAG_SERVER, "error parsing JSON");
+            return ESP_FAIL;
+        }
+
+        cJSON_Delete(json);
+    }
+
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
+}
+httpd_uri_t sliders_t = {
+    .uri       = "/sliders",
+    .method    = HTTP_POST,
+    .handler   = sliders_post_handler,
     .user_ctx  = NULL
 };
 

@@ -23,7 +23,7 @@ esp_err_t html_get_handler(httpd_req_t *req);
 
 
 /**
- * @brief Handler for processing GET requests for data from the large blind.
+ * @brief Handler for processing GET requests for data from the big blind.
  * 
  * @param req Pointer to the httpd_req_t structure.
  * @return ESP_OK on success, ESP_FAIL on failure.

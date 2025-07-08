@@ -83,13 +83,13 @@
            <h2>Main</h2>
 
             small blind:
-            <input type="range" class="slider" id="smallSliderID" min="1" max="30" step="1" value="15">
+            <input type="range" class="slider" id="smallSliderID" min="1" max="30000" step="1" value="15000">
             <button id="smallSliderButton">Set</button> 
 
             <br>
 
             big blind:
-            <input type="range" class="slider" id="bigSliderID" min="1" max="30" step="1" value="15">
+            <input type="range" class="slider" id="bigSliderID" min="1" max="30000" step="1" value="15000">
             <button id="bigSliderButton">Set</button>
             <br><br>
             precalibrated for small: <br>
@@ -213,7 +213,7 @@
             smallSlider: Number(smallSlider),
         };
 
-        valuesJsonPOST(data, 'parameters');
+        valuesJsonPOST(data, 'sliders');
     }
 
     function bigSliderPOST(){
@@ -222,7 +222,7 @@
             bigSlider: Number(bigSlider) 
         };
 
-       valuesJsonPOST(data, 'parameters');
+       valuesJsonPOST(data, 'sliders');
     }
 
     function readyPositionsPOST(id){
@@ -230,7 +230,7 @@
             elementId: id
         };
 
-        valuesJsonPOST(data, 'parameters');
+        valuesJsonPOST(data, 'predefined-positions');
     }
 
     document.getElementById('smallSliderButton').addEventListener("click", function(){smallSliderPOST()});
@@ -257,7 +257,7 @@
     const schedule = [
     { day: "Monday",        start: "--:--", end: "--:--" },
     { day: "Tuesday",       start: "--:--", end: "--:--" },
-    { day: "Wendesday",     start: "--:--", end: "--:--" },
+    { day: "Wednesday",     start: "--:--", end: "--:--" },
     { day: "Thursday",      start: "--:--", end: "--:--" },
     { day: "Friday",        start: "--:--", end: "--:--" },
     { day: "Saturday",      start: "--:--", end: "--:--" },
@@ -298,7 +298,7 @@
             bigMoveDown: Number(moveDown) 
         };
 
-        valuesJsonPOST(data, 'parameters');
+        valuesJsonPOST(data, 'calibration');
     }
 
     function SmallConfigPOST(){
@@ -310,7 +310,7 @@
             smallMoveDown: Number(moveDown) 
         };
 
-        valuesJsonPOST(data, 'parameters');
+        valuesJsonPOST(data, 'calibration');
     }
 
     function UpConfirmPOST(id){
@@ -319,7 +319,7 @@
             confirmUpBlindId: id
         };
 
-        valuesJsonPOST(data, 'parameters');
+        valuesJsonPOST(data, 'confirm-full-up');
     }
 
     document.getElementById('bigCalibrateButton').addEventListener("click", function(){BigConfigPOST()});

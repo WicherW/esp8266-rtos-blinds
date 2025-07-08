@@ -9,17 +9,66 @@
 httpd_handle_t start_server(void) {
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.max_uri_handlers = 12; // amount of URI handlers
 
     ESP_LOGI(TAG_SERVER, "Starting server on port: '%d'", config.server_port);
+
     if (httpd_start(&server, &config) == ESP_OK) {
         
         ESP_LOGI(TAG_SERVER, "Registering URI handlers");
-        httpd_register_uri_handler(server, &main_page_t);
-        httpd_register_uri_handler(server, &parameters_t);
-        httpd_register_uri_handler(server, &schedule_t); //!! refactor this
-        httpd_register_uri_handler(server, &small_dev_data_t);
-        httpd_register_uri_handler(server, &big_dev_data_t);
-        httpd_register_uri_handler(server, &fill_inputs_t);
+
+        esp_err_t err;
+
+        err = httpd_register_uri_handler(server, &main_page_t);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_SERVER, "main_page_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
+        }
+
+        err = httpd_register_uri_handler(server, &sliders_t);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_SERVER, "sliders_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
+        }
+
+        err = httpd_register_uri_handler(server, &predefined_positions_t);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_SERVER, "predefined_positions_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
+        }
+
+        err = httpd_register_uri_handler(server, &confirm_full_up_t);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_SERVER, "confirm_full_up_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
+        }
+
+        err = httpd_register_uri_handler(server, &big_dev_data_t);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_SERVER, "big_dev_data_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
+        }
+
+        err = httpd_register_uri_handler(server, &small_dev_data_t);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_SERVER, "small_dev_data_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
+        }
+
+        err = httpd_register_uri_handler(server, &nap_t);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_SERVER, "nap_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
+        }
+
+        err = httpd_register_uri_handler(server, &calibration_t);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_SERVER, "calibration_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
+        }
+
+        err = httpd_register_uri_handler(server, &fill_inputs_t);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_SERVER, "fill_inputs_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
+        }
+
+        err = httpd_register_uri_handler(server, &schedule_t);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_SERVER, "schedule_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
+        }
+
         return server;
     }
 
