@@ -17,7 +17,12 @@
 static httpd_handle_t server = NULL;
 
 void app_main() {
-  ESP_ERROR_CHECK(nvs_flash_init());
+  esp_err_t ret = nvs_flash_init();
+  if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NOT_FOUND) {
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      ret = nvs_flash_init();
+  }
+  ESP_ERROR_CHECK(ret);
   ESP_ERROR_CHECK(esp_netif_init());
   ESP_ERROR_CHECK(esp_event_loop_create_default());
 
@@ -25,11 +30,12 @@ void app_main() {
   scheduleSemaphore = xSemaphoreCreateMutex();
   init_wifi();
   init_nvs();
+  init_spiffs();
+
+  init_start_values();
 
   ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &connect_handler, &server));
   ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &disconnect_handler, &server));
-
-  init_spiffs();
 
   server = start_server();
   sntp_initialize(); //! TODO It might not work if the ESP is disconnected from WiFi or the internet

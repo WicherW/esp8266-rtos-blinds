@@ -39,6 +39,11 @@ httpd_handle_t start_server(void) {
             ESP_LOGE(TAG_SERVER, "confirm_full_up_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
         }
 
+        err = httpd_register_uri_handler(server, &confirm_full_down_t);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_SERVER, "confirm_full_down_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
+        }
+
         err = httpd_register_uri_handler(server, &big_dev_data_t);
         if (err != ESP_OK) {
             ESP_LOGE(TAG_SERVER, "big_dev_data_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
@@ -67,6 +72,11 @@ httpd_handle_t start_server(void) {
         err = httpd_register_uri_handler(server, &schedule_t);
         if (err != ESP_OK) {
             ESP_LOGE(TAG_SERVER, "schedule_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
+        }
+        
+        err = httpd_register_uri_handler(server, &save_max_steps_value_t);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_SERVER, "save_max_steps_value_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
         }
 
         return server;

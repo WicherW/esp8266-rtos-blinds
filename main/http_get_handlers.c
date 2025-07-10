@@ -48,16 +48,21 @@ esp_err_t devdata_get_feedback_smallblind_handler(httpd_req_t *req) {
 
     ESP_LOGI(TAG, "semaphore has been taken successfully!");
 
-    char *json_string = malloc(120);
+    char *json_string = malloc(180); // TODO define magic numbers
     if (json_string == NULL) {
         ESP_LOGE(TAG, "error of malloc!");
         xSemaphoreGive(small_blind_current_parameters_semaphore);
         return ESP_FAIL;
     }
 
-    snprintf(json_string, 120, "{\"maxdownsmallblind\":%i,\"smallcurrentstepsstate\":%i}",
+    printf("max_down_position_small: %i\n", current_parameters_small_blind.max_down_position_small);
+    printf("current_steps_blind_small: %i\n", current_parameters_small_blind.current_steps_blind_small);
+    printf("max_steps_value: %i\n", current_parameters_small_blind.max_steps_value);
+
+    snprintf(json_string, 180, "{\"maxdownsmallblind\":%i,\"smallcurrentstepsstate\":%i,\"smallstepsvalue\":%i}",
              current_parameters_small_blind.max_down_position_small,
-             current_parameters_small_blind.current_steps_blind_small);
+             current_parameters_small_blind.current_steps_blind_small,
+             current_parameters_small_blind.max_steps_value);
 
     esp_err_t ret = httpd_resp_send(req, json_string, strlen(json_string));
     if (ret == ESP_OK) {
@@ -90,16 +95,21 @@ esp_err_t devdata_get_feedback_bigblind_handler(httpd_req_t *req) {
 
     ESP_LOGI(TAG, "semaphore has been taken successfully!");
 
-    char *json_string = malloc(120);
+    char *json_string = malloc(180);
     if (json_string == NULL) {
         ESP_LOGE(TAG, "error of malloc!");
         xSemaphoreGive(big_blind_current_parameters_semaphore);
         return ESP_FAIL;
     }
 
-    snprintf(json_string, 120, "{\"maxdownbigblind\":%i,\"bigcurrentstepsstate\":%i}",
+    printf("max_down_position_big: %i\n", current_parameters_big_blind.max_down_position_big);
+    printf("current_steps_blind_big: %i\n", current_parameters_big_blind.current_steps_blind_big);
+    printf("max_steps_value: %i\n", current_parameters_big_blind.max_steps_value);
+
+    snprintf(json_string, 180, "{\"maxdownbigblind\":%i,\"bigcurrentstepsstate\":%i, \"bigstepsvalue\":%i}",
              current_parameters_big_blind.max_down_position_big,
-             current_parameters_big_blind.current_steps_blind_big);
+             current_parameters_big_blind.current_steps_blind_big,
+             current_parameters_big_blind.max_steps_value);
 
     esp_err_t ret = httpd_resp_send(req, json_string, strlen(json_string));
     if (ret == ESP_OK) {

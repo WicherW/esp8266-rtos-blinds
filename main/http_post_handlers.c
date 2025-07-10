@@ -12,6 +12,61 @@
 #include "stepper_motor_config.h"
 #include "scheduler_config.h"
 
+esp_err_t confirm_full_down_post_hander(httpd_req_t *req){
+    char buf[100];
+    int ret, remaining = req->content_len;
+
+    while (remaining > 0) {
+        
+        if ((ret = httpd_req_recv(req, buf, MIN(remaining, sizeof(buf)))) <= 0) {
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+                continue;
+            }
+
+            return ESP_FAIL;
+        }
+
+        httpd_resp_send_chunk(req, buf, ret);
+        remaining -= ret;
+
+        cJSON *json = cJSON_Parse(buf);
+     
+        // confirm full down position
+        cJSON *confirm_full_down_position_JSON = cJSON_GetObjectItem(json, "confirmDownBlindId");
+        if (cJSON_IsString(confirm_full_down_position_JSON) && (confirm_full_down_position_JSON->valuestring != NULL)) {
+
+            ESP_LOGI(TAG_SERVER, "confirm_full_down_position_JSON: %s", confirm_full_down_position_JSON->valuestring);
+
+            // small
+            if(strcmp(confirm_full_down_position_JSON->valuestring, "smallDownConfirmButton") == 0){
+
+                xTaskCreate(&confirm_full_down_small_blind, "ConfirmFullDownSmallBlind", 2048, NULL, 3, NULL);
+
+            // big
+            } else if(strcmp(confirm_full_down_position_JSON->valuestring, "bigDownConfirmButton") == 0){
+
+                xTaskCreate(&confirm_full_down_big_blind, "ConfirmFullDownBigBlind", 2048, NULL, 3, NULL);
+            }
+        } 
+        
+        if (json == NULL) {
+            ESP_LOGE(TAG_SERVER, "error parsing JSON");
+            return ESP_FAIL;
+        }
+
+        cJSON_Delete(json);
+    }
+
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
+}
+httpd_uri_t confirm_full_down_t = {
+    .uri       = "/confirm-full-down",
+    .method    = HTTP_POST,
+    .handler   = confirm_full_down_post_hander,
+    .user_ctx  = NULL
+};
+
 
 esp_err_t confirm_full_up_post_handler(httpd_req_t *req){
     char buf[100];
@@ -591,5 +646,59 @@ httpd_uri_t schedule_t = {
     .uri       = "/schedule",
     .method    = HTTP_POST,
     .handler   = schedule_post_handler,
+    .user_ctx  = NULL
+};
+
+esp_err_t save_max_steps_value_post_handler(httpd_req_t *req){
+    char buf[100];
+    int ret, remaining = req->content_len;
+
+    while (remaining > 0) {
+        
+        if ((ret = httpd_req_recv(req, buf, MIN(remaining, sizeof(buf)))) <= 0) {
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+                continue;
+            }
+
+            return ESP_FAIL;
+        }
+
+        httpd_resp_send_chunk(req, buf, ret);
+        remaining -= ret;
+
+        cJSON *json = cJSON_Parse(buf);
+
+        cJSON *max_steps_value_JSON = cJSON_GetObjectItem(json, "maxStepsValueId");
+
+        if (cJSON_IsString(max_steps_value_JSON) && (max_steps_value_JSON->valuestring != NULL)) {
+                printf("max_steps_value_JSON: %s\n", max_steps_value_JSON->valuestring);
+            // small
+            if(strcmp(max_steps_value_JSON->valuestring, "smallMaxStepsValueButton") == 0){
+                
+                xTaskCreate(&save_max_steps_value_small_blind, "SaveMaxStepsValueSmallBlind", 2048, NULL, 3, NULL);
+
+            // big
+            } else if(strcmp(max_steps_value_JSON->valuestring, "bigMaxStepsValueButton") == 0){
+                xTaskCreate(&save_max_steps_value_big_blind, "SaveMaxStepsValueBigBlind", 2048, NULL, 3, NULL);
+            }
+        }
+
+        
+        if (json == NULL) {
+            ESP_LOGE(TAG_SERVER, "error parsing JSON");
+            return ESP_FAIL;
+        }
+
+        cJSON_Delete(json);
+    }
+
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
+}
+
+httpd_uri_t save_max_steps_value_t = {
+    .uri       = "/save-max-steps-value",
+    .method    = HTTP_POST,
+    .handler   = save_max_steps_value_post_handler,
     .user_ctx  = NULL
 };

@@ -16,6 +16,7 @@
 #define BIG_PIN2 GPIO_NUM_5
 #define BIG_PIN3 GPIO_NUM_4
 #define BIG_PIN4 GPIO_NUM_2
+
 /*
 only for me to remember the pinout of the stepper motors for the blinds ;p
 physical pinout:
@@ -33,10 +34,17 @@ physical pinout:
 */
 
 // to left - up = 1 | to right - down = 0
+
 typedef enum {
     DOWN = 0,
     UP = 1
 }Direction;
+
+typedef enum {
+    WORKING,
+    REQIRED_CALIBRATION,
+    READY
+}Blind_status;
 
 typedef struct {
     const uint8_t pins_blind_big[4];
@@ -46,18 +54,24 @@ typedef struct {
 
 extern blinds_configuration_t blind_config;
 
+
+// TODO remove one of structs, they are almost the same, remember to change variables names in the code
 typedef struct {
     int slider_value;
-    int current_steps_blind_big;
+    int32_t current_steps_blind_big;
     int max_down_position_big;
+    int max_steps_value;
+    Blind_status status;
 }current_parameters_big_blind_t;
 
 extern current_parameters_big_blind_t current_parameters_big_blind;
 
 typedef struct {
     int slider_value;
-    int current_steps_blind_small;
+    int32_t current_steps_blind_small;
     int max_down_position_small; 
+    int max_steps_value;
+    Blind_status status;
 }current_parameters_small_blind_t;
 
 extern current_parameters_small_blind_t current_parameters_small_blind;
@@ -82,7 +96,7 @@ extern SemaphoreHandle_t small_blind_current_parameters_semaphore;
 
 /**
  * @brief Sets the GPIO configuration for stepper motors and sets pin levels.
- * Creates semaphores for the large and small blinds as well as a semaphore for the scheduler.
+ * Creates semaphores for the large and small blinds.
  */
 void stepper_motor_config();
 
@@ -120,5 +134,40 @@ void confirm_full_up_big_blind(void *pvParameters);
  */
 void confirm_full_up_small_blind(void *pvParameters);
 
+
+/**
+ * @brief Function to confirm full lowering of the large blind.
+ * 
+ * @param pvParameters Pointer to parameters for the function. */
+void confirm_full_down_big_blind(void *pvParameters);
+
+
+/**
+ * @brief Function to confirm full lowering of the small blind.
+ * 
+ * @param pvParameters Pointer to parameters for the function.
+ */
+void confirm_full_down_small_blind(void *pvParameters);
+
+
+/**
+ * @brief Function to save the maximum steps value for the large blind.
+ * 
+ * @param pvParameters Pointer to parameters for the function.
+ */
+void save_max_steps_value_big_blind(void *pvParameters);
+
+
+/**
+ * @brief Function to save the maximum steps value for the small blind.
+ * 
+ * @param pvParameters Pointer to parameters for the function.
+ */
+void save_max_steps_value_small_blind(void *pvParameters);
+
+/**
+ * @brief Function to initialize the start values for the blinds.
+ */
+void init_start_values();
 
 #endif

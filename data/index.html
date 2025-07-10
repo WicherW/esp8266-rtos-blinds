@@ -79,17 +79,17 @@
 
        <main>
 
-        <section>
+        <section> // TODO change max_value to value from esp
            <h2>Main</h2>
 
             small blind:
-            <input type="range" class="slider" id="smallSliderID" min="1" max="30000" step="1" value="15000">
+            <input type="range" class="slider" id="smallSliderID" min="1" max="1" step="1" value="1">
             <button id="smallSliderButton">Set</button> 
 
             <br>
 
             big blind:
-            <input type="range" class="slider" id="bigSliderID" min="1" max="30000" step="1" value="15000">
+            <input type="range" class="slider" id="bigSliderID" min="1" max="1" step="1" value="1">
             <button id="bigSliderButton">Set</button>
             <br><br>
             precalibrated for small: <br>
@@ -100,13 +100,13 @@
 
         </section>
 
-        <section>
+        <section> // TODO by websockets
             <h2>Status</h2>
             <p>Small blind status: <span id="smallBlindStatus">--</span></p>
             <p>Big blind status:   <span id="bigBlindStatus">  --</span></p>
         </section>
 
-        <section class="schedule">
+        <section class="schedule"> // TODO 
 
             <h2>Schedule</h2>
 
@@ -147,12 +147,17 @@
             <input type="number" id="bigMoveDown" placeholder="down" min="1" max="30">
             <button id="bigCalibrateButton">calibrate</button>
             <button id="bigUpConfirmButton">full up</button>
+            <button id="bigDownConfirmButton">full down</button>
+            <button id="bigMaxStepsValueButton">set max_steps_value</button>
+
             <br><br>
             small blind:
             <input type="number" id="smallMoveUp" placeholder="up" min="1" max="30">
             <input type="number" id="smallMoveDown" placeholder="down" min="1" max="30">
             <button id="smallCalibrateButton">calibrate</button>
             <button id="smallUpConfirmButton">full up</button>
+            <button id="smallDownConfirmButton">full down</button>
+            <button id="smallMaxStepsValueButton">set max_steps_value</button>
         </section>
 
         <section>
@@ -160,12 +165,16 @@
             big blind
             <p>MaxDownPosition: <span id="bigMaxDownPosition"></span></p>
             <p>CurrentStepsState: <span id="bigCurrentStepsState"></span></p>
-            <button id="bigDevdataButton">take data</button>  
+            <p>Saved max amount of steps: <span id="bigValueOfSteps"></span></p>
+            <button id="bigDevdataButton">pull data</button>  
             <br><br><br>
             small blind
             <p>MaxDownPosition: <span id="smallMaxDownPosition"></span></p>
             <p>CurrentStepsState: <span id="smallCurrentStepsState"></span></p>
-            <button id="smallDevdataButton">take data</button>
+            <p>Saved max amount of steps: <span id="smallValueOfSteps"></span></p>
+            <button id="smallDevdataButton">pull data</button>
+
+
         </section>
 
 
@@ -322,11 +331,32 @@
         valuesJsonPOST(data, 'confirm-full-up');
     }
 
+    function DownConfirmPOST(id){
+
+        const data = {
+            confirmDownBlindId: id
+        };
+
+        valuesJsonPOST(data, 'confirm-full-down');
+    }
+
+    function setMaxStepsValue(id) {
+        const data = {
+            maxStepsValueId: id
+        };
+
+        valuesJsonPOST(data, 'save-max-steps-value');
+    }
+
     document.getElementById('bigCalibrateButton').addEventListener("click", function(){BigConfigPOST()});
     document.getElementById('bigUpConfirmButton').addEventListener("click", function(){UpConfirmPOST(this.id)});
+    document.getElementById('bigDownConfirmButton').addEventListener("click", function(){DownConfirmPOST(this.id)});
+    document.getElementById('bigMaxStepsValueButton').addEventListener("click", function(){setMaxStepsValue(this.id)});
 
     document.getElementById('smallCalibrateButton').addEventListener("click", function(){SmallConfigPOST()});
     document.getElementById('smallUpConfirmButton').addEventListener("click", function(){UpConfirmPOST(this.id)});
+    document.getElementById('smallDownConfirmButton').addEventListener("click", function(){DownConfirmPOST(this.id)});
+    document.getElementById('smallMaxStepsValueButton').addEventListener("click", function(){setMaxStepsValue(this.id)});
     
     //----------------------------------------------------------------------------------------------------------
     //******************************************** development ****************************************
@@ -338,6 +368,7 @@
                 .then(data => {
                     document.getElementById('bigMaxDownPosition').textContent = data.maxdownbigblind;
                     document.getElementById('bigCurrentStepsState').textContent = data.bigcurrentstepsstate;
+                    document.getElementById('bigValueOfSteps').textContent = data.bigstepsvalue;
                 })
                 .catch(error => console.error('Error fetching data:', error));
 
@@ -349,6 +380,7 @@
                 .then(data => {
                     document.getElementById('smallMaxDownPosition').textContent = data.maxdownsmallblind;
                     document.getElementById('smallCurrentStepsState').textContent = data.smallcurrentstepsstate;
+                    document.getElementById('smallValueOfSteps').textContent = data.smallstepsvalue;
                 })
                 .catch(error => console.error('Error fetching data:', error));
     }
@@ -358,55 +390,42 @@
     //-----------------------------------------------------------------------------------------------------------
     //******************************************** fill inputs ****************************************
 
-    document.addEventListener("DOMContentLoaded", function() {
-        fillInputs();
-    });
+//     document.addEventListener("DOMContentLoaded", function() {
+//         fillInputs();
+//     });
 
 
-    function fillInputs() {
-    let smallFlag = 0, bigFlag = 0;
+//     function fillInputs() {
+//     //let smallFlag = 0, bigFlag = 0;
 
-    fetch('fillinputs')
-        .then(response => response.json())
-        .then(data => {
-
-            /* TODO refactor this
-            document.getElementById('malaSuwakID').value = data.malaSuwakValue;
-            document.getElementById('duzaSuwakID').value = data.duzaSuwakValue;
-
-            document.getElementById('ponTimeDown').value = data.ponTimeDown;
-            document.getElementById('ponTimeUp').value = data.ponTimeUp;
-            document.getElementById('wtTimeDown').value = data.wtTimeDown;
-            document.getElementById('wtTimeUp').value = data.wtTimeUp;
-            document.getElementById('srTimeDown').value = data.srTimeDown;
-            document.getElementById('srTimeUp').value = data.srTimeUp;
-            document.getElementById('czwTimeDown').value = data.czwTimeDown;
-            document.getElementById('czwTimeUp').value = data.czwTimeUp;
-            document.getElementById('ptTimeDown').value = data.ptTimeDown;
-            document.getElementById('ptTimeUp').value = data.ptTimeUp;
-            document.getElementById('sbTimeDown').value = data.sbTimeDown;
-            document.getElementById('sbTimeUp').value = data.sbTimeUp;
-            document.getElementById('ndzTimeDown').value = data.ndzTimeDown;
-            document.getElementById('ndzTimeUp').value = data.ndzTimeUp;
+//     fetch('fillinputs')
+//         .then(response => response.json())
+//         .then(data => {
 
 
-            smallFlag = data.smallFlag;
-            bigFlag = data.bigFlag;
+
+//         document.getElementById('smallSliderID').max = data.smallBlindMaxValue;
+//         document.getElementById('bigSliderID').max = data.bigBlindMaxValue;
+//             /* TODO refactor this
+//             document.getElementById('malaSuwakID').value = data.malaSuwakValue;
+//             document.getElementById('duzaSuwakID').value = data.duzaSuwakValue;
+
+//             smallFlag = data.smallFlag;
+//             bigFlag = data.bigFlag;
                         
+//             console.log(`smallFlag: ${smallFlag}, bigFlag: ${bigFlag}`); // Debugging
 
-            console.log(`smallFlag: ${smallFlag}, bigFlag: ${bigFlag}`); // Debugging
+//             if (smallFlag == 1 || bigFlag == 1) {
+//                 alert("Jedna z rolet pracowała i zostało jej w trakcie odłączone zasilanie!");
+//             }
+//             */
 
-            if (smallFlag == 1 || bigFlag == 1) {
-                alert("Jedna z rolet pracowała i zostało jej w trakcie odłączone zasilanie!");
-            }
-            */
-
-        })
-        .catch(error => console.error('Error fetching data:', error));
-
+//         })
+//         .catch(error => console.error('Error fetching data:', error));
 
 
-    getDevDataBig();
-    getDevDataSmall();
-}
+
+//     getDevDataBig();
+//     getDevDataSmall();
+// }
 </script>

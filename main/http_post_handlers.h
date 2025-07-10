@@ -12,6 +12,8 @@ extern httpd_uri_t predefined_positions_t;
 extern httpd_uri_t nap_t;
 extern httpd_uri_t calibration_t;
 extern httpd_uri_t confirm_full_up_t;
+extern httpd_uri_t confirm_full_down_t;
+extern httpd_uri_t save_max_steps_value_t;
 
 /**
  * @brief Function handling the POST request for the "/parameters" endpoint.
@@ -68,6 +70,13 @@ esp_err_t calibration_post_handler(httpd_req_t *req);
 esp_err_t confirm_full_up_post_handler(httpd_req_t *req);
 
 
+/**
+ * @brief Function handling the POST request for confirming the full down position of blinds by /confirm-full-down endpoint.
+ * 
+ * @param req Pointer to the httpd_req structure containing request information.
+ * @return Returns ESP_OK on success, or another error code on failure.
+ */
+esp_err_t confirm_full_down_post_handler(httpd_req_t *req);
 
 
 /**
@@ -78,6 +87,14 @@ esp_err_t confirm_full_up_post_handler(httpd_req_t *req);
  * @return Returns ESP_OK on success, or another error code on failure.
  */
 esp_err_t schedule_post_handler(httpd_req_t *req);
+
+/**
+ * @brief Function handling the POST request for saving the maximum steps value by /save-max-steps-value endpoint.
+ * 
+ * @param req Pointer to the httpd_req structure containing request information.
+ * @return Returns ESP_OK on success, or another error code on failure.
+ */
+esp_err_t save_max_steps_value_post_handler(httpd_req_t *req);
 
 
 #endif
