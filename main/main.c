@@ -19,8 +19,8 @@ static httpd_handle_t server = NULL;
 void app_main() {
   esp_err_t ret = nvs_flash_init();
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NOT_FOUND) {
-      ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    ret = nvs_flash_init();
   }
   ESP_ERROR_CHECK(ret);
   ESP_ERROR_CHECK(esp_netif_init());
@@ -38,6 +38,8 @@ void app_main() {
   ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &disconnect_handler, &server));
 
   server = start_server();
-  sntp_initialize(); //! TODO It might not work if the ESP is disconnected from WiFi or the internet
+
+ // commented out for some time, until I figure out base functionality
+ // sntp_initialize(); //! TODO It might not work if the ESP is disconnected from WiFi or the internet
 
 }

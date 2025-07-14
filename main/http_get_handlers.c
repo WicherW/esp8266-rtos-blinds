@@ -14,6 +14,7 @@
 #include "stepper_motor_config.h"
 #include "nvs_config.h"
 
+#define JSON_BUFFER_SIZE 180
 
 esp_err_t html_get_handler(httpd_req_t *req) {
     char *file_buffer = NULL;
@@ -28,7 +29,6 @@ esp_err_t html_get_handler(httpd_req_t *req) {
 
     return httpd_resp_send_500(req);
 }
-
 httpd_uri_t main_page_t = {
     .uri       = "/",
     .method    = HTTP_GET,
@@ -36,33 +36,29 @@ httpd_uri_t main_page_t = {
     .user_ctx  = NULL
 };
 
-
+// TODO refactor this, move whole logic to tasks
 esp_err_t devdata_get_feedback_smallblind_handler(httpd_req_t *req) {
     
     const char *TAG = "smallBlindDevDataHandler";
 
-    if (xSemaphoreTake(small_blind_current_parameters_semaphore, 0) != pdTRUE) {
-        ESP_LOGE(TAG, "semaphore is busy!");
+    esp_err_t block_check = block_semaphores(SMALL_BLIND);
+    if(block_check != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to block semaphores for small blind");
         return ESP_FAIL;
     }
 
     ESP_LOGI(TAG, "semaphore has been taken successfully!");
 
-    char *json_string = malloc(180); // TODO define magic numbers
+    char *json_string = malloc(JSON_BUFFER_SIZE);
     if (json_string == NULL) {
         ESP_LOGE(TAG, "error of malloc!");
-        xSemaphoreGive(small_blind_current_parameters_semaphore);
+        release_semaphores(SMALL_BLIND);
         return ESP_FAIL;
     }
 
-    printf("max_down_position_small: %i\n", current_parameters_small_blind.max_down_position_small);
-    printf("current_steps_blind_small: %i\n", current_parameters_small_blind.current_steps_blind_small);
-    printf("max_steps_value: %i\n", current_parameters_small_blind.max_steps_value);
-
-    snprintf(json_string, 180, "{\"maxdownsmallblind\":%i,\"smallcurrentstepsstate\":%i,\"smallstepsvalue\":%i}",
-             current_parameters_small_blind.max_down_position_small,
-             current_parameters_small_blind.current_steps_blind_small,
-             current_parameters_small_blind.max_steps_value);
+    snprintf(json_string, JSON_BUFFER_SIZE, "{\"smallmaxdownposition\":%i,\"smallcurrentstepsstate\":%i}",
+             small_blind_parameters.max_down_position,
+             small_blind_parameters.current_steps_state);
 
     esp_err_t ret = httpd_resp_send(req, json_string, strlen(json_string));
     if (ret == ESP_OK) {
@@ -72,7 +68,7 @@ esp_err_t devdata_get_feedback_smallblind_handler(httpd_req_t *req) {
     }
 
     free(json_string);
-    xSemaphoreGive(small_blind_current_parameters_semaphore);
+    release_semaphores(SMALL_BLIND);
     ESP_LOGI(TAG, "semaphore has been released!");
     return ret;
 }
@@ -88,28 +84,24 @@ esp_err_t devdata_get_feedback_bigblind_handler(httpd_req_t *req) {
 
     const char *TAG = "bigBlindDevDataHandler";
 
-    if (xSemaphoreTake(big_blind_current_parameters_semaphore, 0) != pdTRUE) {
-        ESP_LOGE(TAG, "semaphore is busy!");
+    esp_err_t block_check = block_semaphores(BIG_BLIND);
+    if(block_check != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to block semaphores for big blind");
         return ESP_FAIL;
     }
 
     ESP_LOGI(TAG, "semaphore has been taken successfully!");
 
-    char *json_string = malloc(180);
+    char *json_string = malloc(JSON_BUFFER_SIZE);
     if (json_string == NULL) {
         ESP_LOGE(TAG, "error of malloc!");
-        xSemaphoreGive(big_blind_current_parameters_semaphore);
+        release_semaphores(BIG_BLIND);
         return ESP_FAIL;
     }
 
-    printf("max_down_position_big: %i\n", current_parameters_big_blind.max_down_position_big);
-    printf("current_steps_blind_big: %i\n", current_parameters_big_blind.current_steps_blind_big);
-    printf("max_steps_value: %i\n", current_parameters_big_blind.max_steps_value);
-
-    snprintf(json_string, 180, "{\"maxdownbigblind\":%i,\"bigcurrentstepsstate\":%i, \"bigstepsvalue\":%i}",
-             current_parameters_big_blind.max_down_position_big,
-             current_parameters_big_blind.current_steps_blind_big,
-             current_parameters_big_blind.max_steps_value);
+    snprintf(json_string, JSON_BUFFER_SIZE, "{\"bigmaxdownposition\":%i,\"bigcurrentstepsstate\":%i}",
+             big_blind_parameters.max_down_position,
+             big_blind_parameters.current_steps_state);
 
     esp_err_t ret = httpd_resp_send(req, json_string, strlen(json_string));
     if (ret == ESP_OK) {
@@ -119,11 +111,10 @@ esp_err_t devdata_get_feedback_bigblind_handler(httpd_req_t *req) {
     }
 
     free(json_string);
-    xSemaphoreGive(big_blind_current_parameters_semaphore);
+    release_semaphores(BIG_BLIND);
     ESP_LOGI(TAG, "semaphore has been released!");
     return ret;
 }
-
 httpd_uri_t big_dev_data_t = {
     .uri       = "/bigdevdata",
     .method    = HTTP_GET,
@@ -149,22 +140,20 @@ esp_err_t fillinputs_get_feedback_handler(httpd_req_t *req) {
     }
 
     ESP_LOGI(TAG, "semaphores have been taken successfully!");
+    // // !! move to the other function
+    // int32_t smallFlag = read_int_from_nvs("small");
+    // int32_t bigFlag = read_int_from_nvs("big");
 
-    int32_t smallFlag = read_int_from_nvs("small");
-    int32_t bigFlag = read_int_from_nvs("big");
-
-    json_string = malloc(JSON_CONST_SIZE);
+    json_string = malloc(JSON_BUFFER_SIZE);
     if (json_string == NULL) {
         ESP_LOGE(TAG, "error of malloc!");
         goto release_both;
     }
 
-    snprintf(json_string, JSON_CONST_SIZE, 
-        "{\"smallSlider\":%i,\"bigSlider\":%i,\"smallFlag\":%i,\"bigFlag\":%i}", 
-        current_parameters_small_blind.slider_value, 
-        current_parameters_big_blind.slider_value, 
-        smallFlag,
-        bigFlag);
+    snprintf(json_string, JSON_BUFFER_SIZE, 
+        "{\"smallmaxdownposition\":%i,\"bigmaxdownposition\":%i}", 
+        small_blind_parameters.max_down_position, 
+        big_blind_parameters.max_down_position);
 
     if (httpd_resp_send(req, json_string, strlen(json_string)) != ESP_OK) {
         ESP_LOGE(TAG, "JSON respond sending failed!");
@@ -191,3 +180,4 @@ httpd_uri_t fill_inputs_t = {
     .handler   = fillinputs_get_feedback_handler,
     .user_ctx  = NULL
 };
+// TODO -------------------------------------

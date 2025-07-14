@@ -12,8 +12,10 @@
 #include "scheduler_config.h"
 #include "nvs_config.h"
 
+//!! check in practice if this value is good
+#define DELAY_BETWEEN_STEPS  10 // milliseconds
 
-blinds_configuration_t blind_config = {
+blinds_configuration_t blinds_config = {
     .phase_pattern = { 
     {1, 0, 0, 0},
     {0, 1, 0, 0},
@@ -32,25 +34,23 @@ blinds_configuration_t blind_config = {
     SMALL_PIN3,
     SMALL_PIN4
     }
-    
 };
 
-current_parameters_big_blind_t current_parameters_big_blind = {
-    .slider_value = 0,
-    .current_steps_blind_big = 0,
-    .max_down_position_big = 0,
-    .max_steps_value = 0,
+blind_parameters_t big_blind_parameters = {
+    .max_down_position = 0,
+    .current_steps_state = 0,
+    .status = REQIRED_CALIBRATION
 };
 
-current_parameters_small_blind_t current_parameters_small_blind = {
-    .slider_value = 0,
-    .current_steps_blind_small = 0,
-    .max_down_position_small = 0,
-    .max_steps_value = 0,
+blind_parameters_t small_blind_parameters = {
+    .max_down_position = 0,
+    .current_steps_state = 0,
+    .status = REQIRED_CALIBRATION
 };
 
 SemaphoreHandle_t big_blind_current_parameters_semaphore;
 SemaphoreHandle_t small_blind_current_parameters_semaphore;
+
 
 
 void stepper_motor_config() {
@@ -82,414 +82,264 @@ void calibration_blind(void *pvParameters) {
     const char *TAG = "calibrationBlind";
 
     uint8_t currentStepOfMotor = 0;
-    int step_count = 0; // zmienna zamiast i
+    int step_count = 0;
 
-    int blind_model;
+    blind_model_t blind_model;
     const uint8_t *pind_blind;
-    Direction direction;
+    direction direction;
     int steps_to_do;
     int *max_down_position;
-    int *current_step_state;
+    int *current_steps_state;
 
-    Blind_to_do_parameters_t *param = (Blind_to_do_parameters_t *)pvParameters;
+    blind_to_do_parameters_t *param = (blind_to_do_parameters_t *)pvParameters;
     blind_model = param->blind_model;
     pind_blind = param->pind_blind;
     direction = param->direction;
-    steps_to_do = param->steps_to_do;
     max_down_position = param->max_down_position;
-    current_step_state = param->current_step_state;
+    current_steps_state = param->current_steps_state;
+    steps_to_do = param->steps_to_do_calibration;
 
-    printf("blind model: %d, direction: %d, steps_to_do: %d, max_down_position: %d, currentStepState: %d\n",
-           blind_model, direction, steps_to_do, *max_down_position, *current_step_state);
-
-    if (blind_model) { // big blind
-        if (xSemaphoreTake(big_blind_current_parameters_semaphore, 0) == pdTRUE) {
-            ESP_LOGI(TAG, "semaphore for big blind has been taken successfully!");
-        } else {
-            ESP_LOGE(TAG, "semaphore for big blind is busy! removing task");
-            free(param);
-            vTaskDelete(NULL);
-        }
-    } else {
-        if (xSemaphoreTake(small_blind_current_parameters_semaphore, 0) == pdTRUE) {
-            ESP_LOGI(TAG, "semaphore for small blind has been taken successfully!");
-        } else {
-            ESP_LOGE(TAG, "semaphore for small blind is busy! removing task");
-            free(param);
-            vTaskDelete(NULL);
-        }
-    }
-
-    switch (direction) {
-        case UP:
-            while (step_count < steps_to_do) {
-                currentStepOfMotor = (currentStepOfMotor + 1) % 4;
-
-                for (uint8_t j = 0; j < 4; j++) {
-                    gpio_set_level(pind_blind[j], blind_config.phase_pattern[currentStepOfMotor][j]);
-                }
-                vTaskDelay(pdMS_TO_TICKS(10));
-                step_count++;
-               // printf("step_count: %d, currentStepOfMotor: %d\n", step_count, currentStepOfMotor);
-            }
-            break;
-
-        case DOWN:
-            *max_down_position += steps_to_do; // aktualizujemy max_down_position
-            *current_step_state += steps_to_do;
-
-            while (step_count < steps_to_do) {
-                currentStepOfMotor = (currentStepOfMotor + 3) % 4;
-
-                for (uint8_t j = 0; j < 4; j++) {
-                    gpio_set_level(pind_blind[j], blind_config.phase_pattern[currentStepOfMotor][j]);
-                }
-                vTaskDelay(pdMS_TO_TICKS(10));
-                step_count++;
-               // printf("step_count: %d, currentStepOfMotor: %d\n", step_count, currentStepOfMotor);
-            }
-            break;
-
-        default:
-            break;
-    }
-
-    // wyłącz silnik
-    for (uint8_t j = 0; j < 4; j++) {
-        gpio_set_level(pind_blind[j], 0);
-    }
-
-    ESP_LOGI(TAG, "calibration done!");
-
-    if (blind_model) { // big blind
-        xSemaphoreGive(big_blind_current_parameters_semaphore);
-        ESP_LOGI(TAG, "semaphore for big blind has been released!");
-    } else {
-        xSemaphoreGive(small_blind_current_parameters_semaphore);
-        ESP_LOGI(TAG, "semaphore for small blind has been released!");
-    }
-
-    free(param);
-    vTaskDelete(NULL);
-}
-
-
-void rolling_blind(void *pvParameters) {
-
-    const char *TAG = "rollingBlind";
-    uint8_t currentStepOfMotor = 0;
-    int i = 0;
-
-    int blind_model;
-    const uint8_t *pind_blind;
-    Direction direction = UP; // =UP for compilation, but it will be set in the code
-    int slider_value;
-    int *max_down_position;
-    int *current_step_state;
-    int steps_to_do;
-    int step_state_to_do;
-    int *strSliderValue;
-
-    Blind_to_do_parameters_t *param = (Blind_to_do_parameters_t *)pvParameters;
-    blind_model = param->blind_model;
-    pind_blind = param->pind_blind;
-    slider_value = param->slider_value;
-    max_down_position = param->max_down_position;
-    current_step_state = param->current_step_state;
-    strSliderValue = param->pv_to_slider_value;
-
-    // Blocking semapores
-    if (blind_model) { // big blind
-        if (xSemaphoreTake(big_blind_current_parameters_semaphore, 0) == pdTRUE) {
-            ESP_LOGI(TAG, "semaphore for big blind has been taken successfully!");
-            save_int_to_nvs("big", 1);
-        } else {
-            ESP_LOGE(TAG, "semaphore for big blind is busy! removing task");
-            save_int_to_nvs("big", 0);
-            free(param);
-            vTaskDelete(NULL);
-        }
-    } else { // small blind
-        if (xSemaphoreTake(small_blind_current_parameters_semaphore, 0) == pdTRUE) {
-            ESP_LOGI(TAG, "semaphore for small blind has been taken successfully!");
-            save_int_to_nvs("small", 1);
-        } else {
-            ESP_LOGE(TAG, "semaphore for small blind is busy! removing task");
-            save_int_to_nvs("small", 0);
-            free(param);
-            vTaskDelete(NULL);
-        }
-    }
-
-    printf("blind_model: %d, slider_value: %d, max_down_position: %d, current_step_state: %d\n", 
-           blind_model, slider_value, *max_down_position, *current_step_state);
-
-    step_state_to_do = slider_value * (*max_down_position); // !! FIX IT 
-    steps_to_do = *current_step_state - step_state_to_do;
-
-    printf("step_state_to_do: %d, steps_to_do: %d\n", step_state_to_do, steps_to_do);
-
-    if (steps_to_do > 0) {
-        direction = UP;
-    } else if (steps_to_do < 0) {
-        steps_to_do = steps_to_do * (-1);
-        direction = DOWN;
-    } else { // nothing to do
-        ESP_LOGI(TAG, "nothing to do, going to clean up, steps_to_do: %d", steps_to_do);
+    esp_err_t block_check = block_semaphores(blind_model);
+    if(block_check != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to block semaphores for blind model %d, goto cleanup", blind_model);
         goto cleanup;
     }
 
-    printf("after calculations - blind_model: %d, direction: %d, steps_to_do: %d, max_down_position: %d, currentStepState: %d, step_state_to_do: %d, slider_value: %d\n", 
-           blind_model, direction, steps_to_do, *max_down_position, *current_step_state, step_state_to_do, slider_value);
-
-
-    i = 0;
-
     switch (direction) {
         case UP:
-            if ((*current_step_state - steps_to_do) < 0) {
-                ESP_LOGE(TAG, "too many steps to do UP!");
-                goto cleanup;
-            }
-
-            while (i < steps_to_do) {
+            while (step_count < steps_to_do) {
                 currentStepOfMotor = (currentStepOfMotor + 1) % 4;
 
                 for (uint8_t j = 0; j < 4; j++) {
-                    gpio_set_level(pind_blind[j], blind_config.phase_pattern[currentStepOfMotor][j]);
-                    vTaskDelay(pdMS_TO_TICKS(1));
+                    gpio_set_level(pind_blind[j], blinds_config.phase_pattern[currentStepOfMotor][j]);
                 }
-                i++;
+                vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS));
+                step_count++;
             }
             break;
 
         case DOWN:
-            if ((*current_step_state + steps_to_do) > *max_down_position) {
-                ESP_LOGE(TAG, "too many steps to do DOWN!");
-                goto cleanup;
-            }
+            *max_down_position += steps_to_do;
+            *current_steps_state += steps_to_do;
 
-            while (i < steps_to_do) {
+            while (step_count < steps_to_do) {
                 currentStepOfMotor = (currentStepOfMotor + 3) % 4;
 
                 for (uint8_t j = 0; j < 4; j++) {
-                    gpio_set_level(pind_blind[j], blind_config.phase_pattern[currentStepOfMotor][j]);
-                    vTaskDelay(pdMS_TO_TICKS(1));
+                    gpio_set_level(pind_blind[j], blinds_config.phase_pattern[currentStepOfMotor][j]);
                 }
-                i++;
+                vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS));
+                step_count++;
             }
             break;
 
         default:
             break;
     }
-
-    *current_step_state = step_state_to_do;
-    *strSliderValue = slider_value;
 
     // turn off the motor
     for (uint8_t j = 0; j < 4; j++) {
         gpio_set_level(pind_blind[j], 0);
     }
 
-    // write state of blinds to NVS
-    if(blind_model){
-        save_int_to_nvs("cur_steps_big", *current_step_state);
-        ESP_LOGI(TAG, "value of current_steps_big: %d", *current_step_state);
-    }else{
-        save_int_to_nvs("cur_steps_sml", *current_step_state);
-        ESP_LOGI(TAG, "value of current_steps_small: %d", *current_step_state);
-    }
-   
-   // release semaphores and flags
+    ESP_LOGI(TAG, "calibration done!");
+
+    release_semaphores(blind_model);
+
     cleanup:
-    if (blind_model) { // big blind
-        xSemaphoreGive(big_blind_current_parameters_semaphore);
-        save_int_to_nvs("big", 0);
-        ESP_LOGI(TAG, "semaphore and flag for big blind has been taken successfully!");
-    } else { // small blind
-        xSemaphoreGive(small_blind_current_parameters_semaphore);
-        save_int_to_nvs("small", 0);
-        ESP_LOGI(TAG, "semaphore and flag for small blind has been taken successfully!");
+        free(param);
+        vTaskDelete(NULL);
+}
+
+void rolling_blind(void *pvParameters) {
+
+    const char *TAG = "rollingBlind";
+    uint8_t currentStepOfMotor = 0;
+    int steps_count = 0;
+
+    blind_model_t blind_model;
+    const uint8_t *pind_blind;
+    direction direction = UP; // =UP for compilation, but it will be set later
+    int *max_down_position;
+    int *current_steps_state;
+    int steps_to_do;
+    int steps_state_to_do;
+
+    blind_to_do_parameters_t *param = (blind_to_do_parameters_t *)pvParameters;
+    blind_model = param->blind_model;
+    pind_blind = param->pind_blind;
+    steps_state_to_do = param->steps_state_to_do;
+    max_down_position = param->max_down_position;
+    current_steps_state = param->current_steps_state;
+
+    esp_err_t block_check = block_semaphores(blind_model);
+    if(block_check != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to block semaphores for blind model %d, goto cleanup", blind_model);
+        goto cleanup;
     }
 
+    steps_to_do = *current_steps_state - steps_state_to_do;
 
-    free(param);
-    vTaskDelete(NULL);
+    if (steps_to_do > 0) {
+        direction = UP;
+    } else if (steps_to_do < 0) {
+        steps_to_do = steps_to_do * (-1);
+        direction = DOWN;
+    } else if( steps_to_do == 0) {
+        ESP_LOGI(TAG, "nothing to do, going to clean up, steps_to_do: %d", steps_to_do);
+        release_semaphores(blind_model);
+        goto cleanup;
+    }
+
+    switch (direction) {
+        case UP:
+            while (steps_count < steps_to_do) {
+                currentStepOfMotor = (currentStepOfMotor + 1) % 4;
+
+                for (uint8_t j = 0; j < 4; j++) {
+                    gpio_set_level(pind_blind[j], blinds_config.phase_pattern[currentStepOfMotor][j]);
+                    vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS));
+                }
+                steps_count++;
+            }
+            break;
+
+        case DOWN:
+            while (steps_count < steps_to_do) {
+                currentStepOfMotor = (currentStepOfMotor + 3) % 4;
+
+                for (uint8_t j = 0; j < 4; j++) {
+                    gpio_set_level(pind_blind[j], blinds_config.phase_pattern[currentStepOfMotor][j]);
+                    vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS));
+                }
+                steps_count++;
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    *current_steps_state = steps_state_to_do;
+
+    // turn off the motor
+    for (uint8_t j = 0; j < 4; j++) {
+        gpio_set_level(pind_blind[j], 0);
+    }
+
+    //TODO refactor this
+    // if(blind_model){
+    //     save_int_to_nvs("cur_steps_big", *current_step_state);
+    //     ESP_LOGI(TAG, "value of current_steps_big: %d", *current_step_state);
+    // }else{
+    //     save_int_to_nvs("cur_steps_sml", *current_step_state);
+    //     ESP_LOGI(TAG, "value of current_steps_small: %d", *current_step_state);
+    // }
+
+    release_semaphores(blind_model);
+
+    cleanup:
+        free(param);
+        vTaskDelete(NULL);
 }
 
 void confirm_full_up_big_blind(void *pvParameters) {
 
     const char *TAG = "confirmBigBlind";
 
-    if (xSemaphoreTake(big_blind_current_parameters_semaphore, 0) == pdTRUE){
-        ESP_LOGI(TAG, "semaphore has been taken successfully!");
-    } else{
-        ESP_LOGE(TAG, "semaphore is busy! removing task");
-        vTaskDelete(NULL);
+    esp_err_t block_check = block_semaphores(BIG_BLIND);
+    if(block_check != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to block semaphores for big blind, goto cleanup");
+        goto cleanup;
     }
 
-    ESP_LOGI(TAG, "value of max_down_position before 0: %i", current_parameters_big_blind.max_down_position_big);
-    current_parameters_big_blind.max_down_position_big = 0; 
-    current_parameters_big_blind.current_steps_blind_big = 0; // making sure that the currentStepsBlind is set to 0, because it is the place where the blinds are supposed to be zeroed
-    ESP_LOGI(TAG, "zeroed max_down_position!");
-    ESP_LOGI(TAG, "value of max_down_position after 0: %i", current_parameters_big_blind.max_down_position_big);
+    big_blind_parameters.max_down_position = 0; 
+    big_blind_parameters.current_steps_state = 0;
 
-    xSemaphoreGive(big_blind_current_parameters_semaphore);
-    ESP_LOGI(TAG, "semaphore has been released!");
+    release_semaphores(BIG_BLIND);
 
-    vTaskDelete(NULL);
+    cleanup:
+        vTaskDelete(NULL);
 } 
 
 void confirm_full_up_small_blind(void *pvParameters) {
 
     const char *TAG = "confirmSmallBlind";
 
-    if (xSemaphoreTake(small_blind_current_parameters_semaphore, 0) == pdTRUE){
-        ESP_LOGI(TAG, "semaphore has been taken successfully!");
-    } else{
-        ESP_LOGE(TAG, "semaphore is busy! removing task");
-        vTaskDelete(NULL);
+    esp_err_t block_check = block_semaphores(SMALL_BLIND);
+    if(block_check != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to block semaphores for small blind, goto cleanup");
+        goto cleanup;
     }
 
-    ESP_LOGI(TAG, "value of max_down_position before 0: %i", current_parameters_small_blind.max_down_position_small);
-    current_parameters_small_blind.max_down_position_small = 0;
-    current_parameters_small_blind.current_steps_blind_small = 0; // making sure that the currentStepsBlind is set to 0, because it is the place where the blinds are supposed to be zeroed
-    ESP_LOGI(TAG, "zeroed max_down_position!");
-    ESP_LOGI(TAG, "value of max_down_position after 0: %i", current_parameters_small_blind.max_down_position_small);
-    
-    xSemaphoreGive(small_blind_current_parameters_semaphore);
-    ESP_LOGI(TAG, "semaphore has been released!");
+    small_blind_parameters.max_down_position = 0;
+    small_blind_parameters.current_steps_state = 0; 
 
-    vTaskDelete(NULL);
-}
+    release_semaphores(SMALL_BLIND);
 
-void confirm_full_down_small_blind(void *pvParameters) {
-
-    const char *TAG = "confirmDownSmallBlind";
-
-    if (xSemaphoreTake(small_blind_current_parameters_semaphore, 0) == pdTRUE){
-        ESP_LOGI(TAG, "semaphore has been taken successfully!");
-    } else{
-        ESP_LOGE(TAG, "semaphore is busy! removing task");
+    cleanup:
         vTaskDelete(NULL);
-    }
-
-    ESP_LOGI(TAG, "value of max_down_position before set: %i", current_parameters_small_blind.max_down_position_small);
-    current_parameters_small_blind.max_down_position_small = current_parameters_small_blind.current_steps_blind_small;
-    ESP_LOGI(TAG, "set max_down_position!");
-    ESP_LOGI(TAG, "value of max_down_position after set: %i", current_parameters_small_blind.max_down_position_small);
-    
-    xSemaphoreGive(small_blind_current_parameters_semaphore);
-    ESP_LOGI(TAG, "semaphore has been released!");
-
-    vTaskDelete(NULL);
-}
-
-void confirm_full_down_big_blind(void *pvParameters) {
-    const char *TAG = "confirmDownBigBlind";
-
-    if (xSemaphoreTake(big_blind_current_parameters_semaphore, 0) == pdTRUE){
-        ESP_LOGI(TAG, "semaphore has been taken successfully!");
-    } else{
-        ESP_LOGE(TAG, "semaphore is busy! removing task");
-        vTaskDelete(NULL);
-    }
-
-    ESP_LOGI(TAG, "value of max_down_position before set: %i", current_parameters_big_blind.max_down_position_big);
-    current_parameters_big_blind.max_down_position_big = current_parameters_big_blind.max_steps_value; 
-    ESP_LOGI(TAG, "set max_down_position!");
-    ESP_LOGI(TAG, "value of max_down_position after set: %i", current_parameters_big_blind.max_down_position_big);
-
-    xSemaphoreGive(big_blind_current_parameters_semaphore);
-    ESP_LOGI(TAG, "semaphore has been released!");
-
-    vTaskDelete(NULL);
-} 
-
-void save_max_steps_value_big_blind(void *pvParameters) {
-
-    const char *TAG = "saveMaxStepsBigBlind";
-
-    if (xSemaphoreTake(big_blind_current_parameters_semaphore, 0) == pdTRUE){
-        ESP_LOGI(TAG, "semaphore has been taken successfully!");
-    } else{
-        ESP_LOGE(TAG, "semaphore is busy! removing task");
-        vTaskDelete(NULL);
-    }
-
-    printf("before save current_steps_blind_big: %d\n", current_parameters_big_blind.current_steps_blind_big);
-
-    save_int_to_nvs("max_steps_big", current_parameters_big_blind.current_steps_blind_big);
-    current_parameters_big_blind.max_steps_value = current_parameters_big_blind.current_steps_blind_big;
-    current_parameters_big_blind.status = READY;
-    // TODO send to server that the big blind is ready
-
-    ESP_LOGI(TAG, "max steps value for big blind saved: %d", current_parameters_big_blind.max_steps_value);
-
-    xSemaphoreGive(big_blind_current_parameters_semaphore);
-    ESP_LOGI(TAG, "semaphore has been released!");
-
-    vTaskDelete(NULL);
-}
-
-void save_max_steps_value_small_blind(void *pvParameters) {
-
-    const char *TAG = "saveMaxStepsSmallBlind";
-
-    if (xSemaphoreTake(small_blind_current_parameters_semaphore, 0) == pdTRUE){
-        ESP_LOGI(TAG, "semaphore has been taken successfully!");
-    } else{
-        ESP_LOGE(TAG, "semaphore is busy! removing task");
-        vTaskDelete(NULL);
-    }
-
-    printf("before save current_steps_blind_small: %d\n", current_parameters_small_blind.current_steps_blind_small);
-
-    save_int_to_nvs("max_steps_sml", current_parameters_small_blind.current_steps_blind_small);
-    current_parameters_small_blind.max_steps_value = current_parameters_small_blind.current_steps_blind_small;
-    current_parameters_small_blind.status = READY;
-    // TODO send to server that the small blind is ready
-
-    ESP_LOGI(TAG, "max steps value for small blind saved: %d", current_parameters_small_blind.max_steps_value);
-
-    xSemaphoreGive(small_blind_current_parameters_semaphore);
-    ESP_LOGI(TAG, "semaphore has been released!");
-
-    vTaskDelete(NULL);
 }
 
 void init_start_values(void *pvParameters){
 
-    int32_t max_steps_value_big = read_int_from_nvs("max_steps_big");
-    int32_t max_steps_value_small = read_int_from_nvs("max_steps_sml");
+    //! max_steps_value is the same as max_down_position!!!!
+    int32_t max_down_position_big = read_int_from_nvs("max_pos_big");
+    int32_t max_down_position_small = read_int_from_nvs("max_pos_sml"); 
+    int32_t current_steps_state_big;
+    int32_t current_steps_state_small;
 
-    printf("max_steps_big: %d\n", max_steps_value_big);
-    printf("max_steps_sml: %d\n", max_steps_value_small);
-
-    int32_t max_down_position_big;
-    int32_t max_down_position_small; 
-    int32_t current_step_state_big;
-    int32_t current_step_state_small;
-
-    if (max_steps_value_big == 0) {
-        current_parameters_big_blind.status = REQIRED_CALIBRATION;
+    if (max_down_position_big == 0) {
+        big_blind_parameters.status = REQIRED_CALIBRATION;
     } else{
-        max_down_position_big = read_int_from_nvs("max_pos_big");
-        current_step_state_big = read_int_from_nvs("cur_steps_big");
-        current_parameters_big_blind.max_down_position_big = max_down_position_big;
-        current_parameters_big_blind.current_steps_blind_big = current_step_state_big;
-        current_parameters_big_blind.max_steps_value = max_steps_value_big;
+        current_steps_state_big = read_int_from_nvs("cur_steps_big");
+        printf("current_step_state_big: %d\n", current_steps_state_big);
+
+        big_blind_parameters.max_down_position = max_down_position_big;
+        big_blind_parameters.current_steps_state = current_steps_state_big;
+        big_blind_parameters.status = READY;
     }
 
-    if (max_steps_value_small == 0) {
-        current_parameters_small_blind.status = REQIRED_CALIBRATION;
+    if (max_down_position_small == 0) {
+        small_blind_parameters.status = REQIRED_CALIBRATION;
     }else {
-        max_down_position_small = read_int_from_nvs("max_pos_sml");
-        current_step_state_small = read_int_from_nvs("cur_steps_sml");
-        current_parameters_small_blind.max_down_position_small = max_down_position_small;
-        current_parameters_small_blind.current_steps_blind_small = current_step_state_small;
-        current_parameters_small_blind.max_steps_value = max_steps_value_small;
+        current_steps_state_small = read_int_from_nvs("cur_steps_sml");
+        printf("current_step_state_small: %d\n", current_steps_state_small);
+
+        small_blind_parameters.max_down_position = max_down_position_small;
+        small_blind_parameters.current_steps_state = current_steps_state_small;
+        small_blind_parameters.status = READY;
     }
 
+}
+
+esp_err_t block_semaphores(blind_model_t blind_model) {
+    if (blind_model == BIG_BLIND) {
+        if (xSemaphoreTake(big_blind_current_parameters_semaphore, 0) == pdTRUE) {
+            ESP_LOGI("block_semaphores", "semaphore for big blind has been taken successfully!");
+            return ESP_OK;
+        } else {
+            ESP_LOGE("block_semaphores", "semaphore for big blind is busy!");
+            return ESP_FAIL;
+        }
+    } else {
+        if (xSemaphoreTake(small_blind_current_parameters_semaphore, 0) == pdTRUE) {
+            ESP_LOGI("block_semaphores", "semaphore for small blind has been taken successfully!");
+            return ESP_OK;
+        } else {
+            ESP_LOGE("block_semaphores", "semaphore for small blind is busy!");
+            return ESP_FAIL;
+        }
+    }
+
+}
+
+void release_semaphores(blind_model_t blind_model) {
+    if (blind_model == BIG_BLIND) {
+        xSemaphoreGive(big_blind_current_parameters_semaphore);
+        ESP_LOGI("release_semaphores", "semaphore for big blind has been released!");
+    } else {
+        xSemaphoreGive(small_blind_current_parameters_semaphore);
+        ESP_LOGI("release_semaphores", "semaphore for small blind has been released!");
+    }
 }

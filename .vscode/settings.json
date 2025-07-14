@@ -107,7 +107,8 @@
         "nvs_config.h": "c",
         "server_config.h": "c",
         "opt.h": "c",
-        "wifi_config.h": "c"
+        "wifi_config.h": "c",
+        "condition_variable": "c"
     },
     "C_Cpp.errorSquiggles": "disabled",
     "workbench.editor.restoreViewState": true,

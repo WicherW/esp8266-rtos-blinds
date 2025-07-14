@@ -4,9 +4,6 @@
 #include "esp_err.h"
 #include "esp_http_server.h"
 
-#define JSON_CONST_SIZE 150
-#define JSON_BLIND_DATA 120
-
 extern httpd_uri_t main_page_t;
 extern httpd_uri_t small_dev_data_t;
 extern httpd_uri_t big_dev_data_t;

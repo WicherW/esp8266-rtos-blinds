@@ -36,15 +36,20 @@ physical pinout:
 // to left - up = 1 | to right - down = 0
 
 typedef enum {
+    SMALL_BLIND = 0,
+    BIG_BLIND = 1
+}blind_model_t;
+
+typedef enum {
     DOWN = 0,
     UP = 1
-}Direction;
+}direction;
 
 typedef enum {
     WORKING,
     REQIRED_CALIBRATION,
     READY
-}Blind_status;
+}blind_status;
 
 typedef struct {
     const uint8_t pins_blind_big[4];
@@ -52,43 +57,26 @@ typedef struct {
     const uint8_t phase_pattern[4][4];
 }blinds_configuration_t;
 
-extern blinds_configuration_t blind_config;
-
-
-// TODO remove one of structs, they are almost the same, remember to change variables names in the code
-typedef struct {
-    int slider_value;
-    int32_t current_steps_blind_big;
-    int max_down_position_big;
-    int max_steps_value;
-    Blind_status status;
-}current_parameters_big_blind_t;
-
-extern current_parameters_big_blind_t current_parameters_big_blind;
+extern blinds_configuration_t blinds_config;
 
 typedef struct {
-    int slider_value;
-    int32_t current_steps_blind_small;
-    int max_down_position_small; 
-    int max_steps_value;
-    Blind_status status;
-}current_parameters_small_blind_t;
+    int32_t current_steps_state;
+    int max_down_position;
+    blind_status status;
+}blind_parameters_t;
 
-extern current_parameters_small_blind_t current_parameters_small_blind;
+extern blind_parameters_t big_blind_parameters;
+extern blind_parameters_t small_blind_parameters;
 
 typedef struct {
-    int blind_model;
+    blind_model_t blind_model;
     const uint8_t *pind_blind;
-    Direction direction;
+    direction direction;
+    int steps_state_to_do;
+    int steps_to_do_calibration;
     int *max_down_position;
-    int *current_step_state;
-    int slider_value;
-    int steps_to_do;
-    int step_state_to_do;
-    int *pv_to_slider_value;
-}Blind_to_do_parameters_t;
-
-Blind_to_do_parameters_t blind_to_do_parameters;
+    int *current_steps_state;
+}blind_to_do_parameters_t;
 
 extern SemaphoreHandle_t big_blind_current_parameters_semaphore;
 extern SemaphoreHandle_t small_blind_current_parameters_semaphore;
@@ -169,5 +157,20 @@ void save_max_steps_value_small_blind(void *pvParameters);
  * @brief Function to initialize the start values for the blinds.
  */
 void init_start_values();
+
+/**
+ * @brief Function to block the semaphores for the blinds.
+ * 
+ * @param blind_model The model of the blind (small or big).
+ * @return esp_err_t ESP_OK on success, or an error code on failure.
+ */
+esp_err_t block_semaphores(blind_model_t blind_model);
+
+/**
+ * @brief Function to release the semaphores for the blinds.
+ * 
+ * @param blind_model The model of the blind (small or big).
+ */
+void release_semaphores(blind_model_t blind_model);
 
 #endif
