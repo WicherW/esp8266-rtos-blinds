@@ -3,7 +3,7 @@
 #include "esp_netif.h"           
 #include "esp_event.h"           
 #include "esp_log.h"            
-#include "esp_wifi.h"      
+#include "esp_wifi.h"   
 
 #include "project_config.h"
 #include "sntp_config.h"
@@ -13,6 +13,7 @@
 #include "wifi_config.h"
 #include "nvs_config.h"
 #include "scheduler_config.h"
+
 
 static httpd_handle_t server = NULL;
 
@@ -39,7 +40,5 @@ void app_main() {
 
   server = start_server();
 
- // commented out for some time, until I figure out base functionality
- // sntp_initialize(); //! TODO It might not work if the ESP is disconnected from WiFi or the internet
-
+  sntp_initialize(); //! TODO It might not work if the ESP is disconnected from WiFi or the internet
 }

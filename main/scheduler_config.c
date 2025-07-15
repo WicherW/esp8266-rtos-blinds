@@ -32,77 +32,76 @@ Schedule scheduleArray[7] = {
 SemaphoreHandle_t scheduleSemaphore;
 TimerHandle_t scheduleTimer = NULL;
 
-//!! TODO refactor 
-// void schedule_timer_callback(TimerHandle_t xTimer) {
+void schedule_timer_callback(TimerHandle_t xTimer) {
 
-//     const char *TAG = "scheduleTimerCallback";
+    // const char *TAG = "scheduleTimerCallback";
 
-//     if(xSemaphoreTake(scheduleSemaphore, portMAX_DELAY) == pdTRUE) {
-//         ESP_LOGI(TAG, "semaphore taken successfully!");
-//     }else{
-//         ESP_LOGI(TAG, "blocking semaphore failed!");
-//         return;
-//     }
+    // // if(xSemaphoreTake(scheduleSemaphore, portMAX_DELAY) == pdTRUE) {
+    // //     ESP_LOGI(TAG, "semaphore taken successfully!");
+    // // }else{
+    // //     ESP_LOGI(TAG, "blocking semaphore failed!");
+    // //     return;
+    // // }
 
-//     struct tm current_time = get_date_and_time();
-//     int current_day = current_time.tm_wday;
-//     int current_hour = current_time.tm_hour;
-//     int current_min = current_time.tm_min;
+    // esp_err_t err = block_semaphores(SMALL_BLIND);
+    // if (err != ESP_OK) {
+    //     ESP_LOGE(TAG, "Failed to block semaphores for small blind, returning");
+    //     return;
+    // }
+    // esp_err_t err = block_semaphores(BIG_BLIND);
+    // if (err != ESP_OK) {
+    //     ESP_LOGE(TAG, "Failed to block semaphores for big blind, returning");
+    //     return;
+    // }
 
-//     // rolling up check
-//     if (current_hour == scheduleArray[current_day].open_time.tm_hour &&
-//         current_min == scheduleArray[current_day].open_time.tm_min) {
-//         ESP_LOGI(TAG, "blinds are going up!");
+    // struct tm current_time = get_date_and_time();
+    // int current_day = current_time.tm_wday;
+    // int current_hour = current_time.tm_hour;
+    // int current_min = current_time.tm_min;
 
-//         Blind_to_do_parameters_t *paramSmall = (Blind_to_do_parameters_t *)pvPortMalloc(sizeof(Blind_to_do_parameters_t));
-//         Blind_to_do_parameters_t *paramBig = (Blind_to_do_parameters_t *)pvPortMalloc(sizeof(Blind_to_do_parameters_t));
+    // // rolling up check
+    // if (current_hour == scheduleArray[current_day].open_time.tm_hour &&
+    //     current_min == scheduleArray[current_day].open_time.tm_min) {
+    //     ESP_LOGI(TAG, "blinds are going up!");
 
-//         paramSmall->slider_value = 0;
-//         paramSmall->blind_model = 0;
-//         paramSmall->pind_blind = blinds_config.pins_blind_small;
-//         paramSmall->max_down_position = &current_parameters_small_blind.max_down_position_small;
-//         paramSmall->current_step_state = &current_parameters_small_blind.current_steps_blind_small;
-//         paramSmall->pv_to_slider_value = &current_parameters_small_blind.slider_value;
+    //     blind_to_do_parameters_t *paramSmall = (blind_to_do_parameters_t *)pvPortMalloc(sizeof(blind_to_do_parameters_t));
+    //     blind_to_do_parameters_t *paramBig = (blind_to_do_parameters_t *)pvPortMalloc(sizeof(blind_to_do_parameters_t));
 
-//         paramBig->slider_value = 0;
-//         paramBig->blind_model = 1;
-//         paramBig->pind_blind = blinds_config.pins_blind_big;
-//         paramBig->max_down_position = &current_parameters_big_blind.max_down_position_big;
-//         paramBig->current_step_state = &current_parameters_big_blind.current_steps_blind_big;
-//         paramBig->pv_to_slider_value = &current_parameters_big_blind.slider_value;
+    //     paramSmall->blind_model = SMALL_BLIND;
+    //     paramSmall->pind_blind = blinds_config.pins_blind_small;
+    //     paramSmall->direction = UP;
+    //     paramSmall->steps_state_to_do = 0;
 
-//         xTaskCreate(&rolling_blind, "schedulerUpSmall", 2048, (void*)paramSmall, 3, NULL);
-//         xTaskCreate(&rolling_blind, "schedulerUpBig", 2048, (void*)paramBig, 3, NULL);
-//     }
+    //     paramBig->blind_model = BIG_BLIND;
+    //     paramBig->pind_blind = blinds_config.pins_blind_big;
+    //     paramBig->direction = UP;
+    //     paramBig->steps_state_to_do = 0;
 
-//     // rolling down check
-//     if (current_hour == scheduleArray[current_day].close_time.tm_hour &&
-//         current_min == scheduleArray[current_day].close_time.tm_min) {
-//         ESP_LOGI(TAG, "blinds are going down!");
+    //     xTaskCreate(&rolling_blind, "schedulerUpSmall", 2048, (void*)paramSmall, 3, NULL);
+    //     xTaskCreate(&rolling_blind, "schedulerUpBig", 2048, (void*)paramBig, 3, NULL);
+    // }
+
+    // // rolling down check
+    // if (current_hour == scheduleArray[current_day].close_time.tm_hour &&
+    //     current_min == scheduleArray[current_day].close_time.tm_min) {
+    //     ESP_LOGI(TAG, "blinds are going down!");
         
-//         blind_to_do_parameters_t *paramSmall = (blind_to_do_parameters_t *)pvPortMalloc(sizeof(blind_to_do_parameters_t));
-//         blind_to_do_parameters_t *paramBig = (blind_to_do_parameters_t *)pvPortMalloc(sizeof(blind_to_do_parameters_t));
+    //     blind_to_do_parameters_t *paramSmall = (blind_to_do_parameters_t *)pvPortMalloc(sizeof(blind_to_do_parameters_t));
+    //     blind_to_do_parameters_t *paramBig = (blind_to_do_parameters_t *)pvPortMalloc(sizeof(blind_to_do_parameters_t));
 
-//         paramSmall->slider_value = 100;
-//         paramSmall->blind_model = 0;
-//         paramSmall->pind_blind = blinds_config.pins_blind_small;
-//         paramSmall->max_down_position = &current_parameters_small_blind.max_down_position_small;
-//         paramSmall->current_step_state = &current_parameters_small_blind.current_steps_blind_small;
-//         paramSmall->pv_to_slider_value = &current_parameters_small_blind.slider_value;
+    //     paramSmall->blind_model = SMALL_BLIND;
+    //     paramSmall->pind_blind = blinds_config.pins_blind_small;
+    //     paramSmall->direction = DOWN;
+    //     paramSmall->steps_state_to_do = 100;
 
-//         paramBig->slider_value = 100;
-//         paramBig->blind_model = 1;
-//         paramBig->pind_blind = blinds_config.pins_blind_big;
-//         paramBig->max_down_position = &current_parameters_big_blind.max_down_position_big;
-//         paramBig->current_step_state = &current_parameters_big_blind.current_steps_blind_big;
-//         //paramBig->pv_to_slider_value = &current_parameters_big_blind.slider_value;
+    //     paramBig->blind_model = BIG_BLIND;
+    //     paramBig->pind_blind = blinds_config.pins_blind_big;
+    //     paramBig->direction = DOWN;
+    //     paramBig->steps_state_to_do = 100;
 
-//         xTaskCreate(&rolling_blind, "schedulerDownSmall", 2048, (void*)paramSmall, 3, NULL);
-//         xTaskCreate(&rolling_blind, "schedulerDownBig", 2048, (void*)paramBig, 3, NULL);
-//     }
+    //     xTaskCreate(&rolling_blind, "schedulerDownSmall", 2048, (void*)paramSmall, 3, NULL);
+    //     xTaskCreate(&rolling_blind, "schedulerDownBig", 2048, (void*)paramBig, 3, NULL);
+    // }
 
-//     xSemaphoreGive(scheduleSemaphore);
-//     ESP_LOGI(TAG, "semaphore has been released!");
-
-//     return;
-// }
+    // return;
+}

@@ -79,8 +79,8 @@
 
        <main>
 
-        <section> // TODO change max_value to value from esp
-           <h2>Main</h2>
+        <section>
+           <h2>Main</h2> // after calibration it's required to refresh the page
 
             small blind:
             <input type="range" class="slider" id="smallSliderID" min="1" max="1" step="1" value="1">
@@ -102,13 +102,7 @@
 
         </section>
 
-        <!-- <section> // TODO by websockets
-            <h2>Status</h2>
-            <p>Small blind status: <span id="smallBlindStatus">--</span></p>
-            <p>Big blind status:   <span id="bigBlindStatus">  --</span></p>
-        </section> -->
-
-        <!-- <section class="schedule"> // TODO 
+        <section class="schedule"> // TODO 
 
             <h2>Schedule</h2>
 
@@ -139,7 +133,7 @@
             <input type="time" id="timeDown">
             <button onclick="setTime('end')">Set time to roll down</button>
 
-        </section> -->
+        </section>
 
         <section>
             <h2>Calibration</h2>
@@ -169,7 +163,6 @@
             <p>MaxDownPosition: <span id="smallMaxDownPosition"></span></p>
             <p>CurrentStepsState: <span id="smallCurrentStepsState"></span></p>
             <button id="smallDevdataButton">pull data</button>
-
 
         </section>
 
@@ -240,56 +233,41 @@
 
     document.getElementById('smallSliderButton').addEventListener("click", function(){smallSliderPOST()});
     document.getElementById('bigSliderButton').addEventListener("click", function(){bigSliderPOST()});
-   
-    // document.getElementById('bigReadyUpID').addEventListener("click", function(){readyPositionsPOST(this.id);});
-    // document.getElementById('bigReadyMidID').addEventListener("click", function(){readyPositionsPOST(this.id);});
-    // document.getElementById('bigReadyDownID').addEventListener("click", function(){readyPositionsPOST(this.id);});
-
-    // document.getElementById('smallReadyUpID').addEventListener("click", function(){readyPositionsPOST(this.id);});
-    // document.getElementById('smallReadyMidID').addEventListener("click", function(){readyPositionsPOST(this.id);});
-    // document.getElementById('smallReadyDownID').addEventListener("click", function(){readyPositionsPOST(this.id);});
-    //-----------------------------------------------------------------------------------------------------------
-    //******************************************** blinds status ************************************************
-    // Fetch the blinds status from the esp
-    // change value of span with id smallBlindStatus and bigBlindStatus
-    // everytime update the status when data has been fetched
-
-
 
     // -----------------------------------------------------------------------------------------------------------
     //********************************************** schedule ***************************************************
 
-    // const schedule = [
-    // { day: "Monday",        start: "--:--", end: "--:--" },
-    // { day: "Tuesday",       start: "--:--", end: "--:--" },
-    // { day: "Wednesday",     start: "--:--", end: "--:--" },
-    // { day: "Thursday",      start: "--:--", end: "--:--" },
-    // { day: "Friday",        start: "--:--", end: "--:--" },
-    // { day: "Saturday",      start: "--:--", end: "--:--" },
-    // { day: "Sunday",        start: "--:--", end: "--:--" }
-    // ];
+    const schedule = [
+    { day: "Monday",        start: "--:--", end: "--:--" },
+    { day: "Tuesday",       start: "--:--", end: "--:--" },
+    { day: "Wednesday",     start: "--:--", end: "--:--" },
+    { day: "Thursday",      start: "--:--", end: "--:--" },
+    { day: "Friday",        start: "--:--", end: "--:--" },
+    { day: "Saturday",      start: "--:--", end: "--:--" },
+    { day: "Sunday",        start: "--:--", end: "--:--" }
+    ];
 
-    // function updateScheduleDisplay() {
-    //   const days = [
-    //     "Monday", "Tuesday", "Wendesday",
-    //     "Thursday", "Friday", "Saturday", "Sunday"
-    //   ];
-    //   const display = schedule.map((entry, i) =>
-    //     `${days[i]}: ${entry.start} / ${entry.end}`
-    //   ).join('\n');
-    //   document.getElementById("scheduleDisplay").textContent = display;
-    //   valuesJsonPOST(schedule, 'schedule'); // Send the schedule to the server
-    // }
+    function updateScheduleDisplay() {
+      const days = [
+        "Monday", "Tuesday", "Wendesday",
+        "Thursday", "Friday", "Saturday", "Sunday"
+      ];
+      const display = schedule.map((entry, i) =>
+        `${days[i]}: ${entry.start} / ${entry.end}`
+      ).join('\n');
+      document.getElementById("scheduleDisplay").textContent = display;
+      valuesJsonPOST(schedule, 'schedule'); // Send the schedule to the server
+    }
 
-    // function setTime(type) {
-    //   const dayIndex = parseInt(document.getElementById("daySelect").value);
-    //   const time = type === 'start'
-    //     ? document.getElementById("timeUp").value
-    //     : document.getElementById("timeDown").value;
+    function setTime(type) {
+      const dayIndex = parseInt(document.getElementById("daySelect").value);
+      const time = type === 'start'
+        ? document.getElementById("timeUp").value
+        : document.getElementById("timeDown").value;
 
-    //   schedule[dayIndex][type] = time;
-    //   updateScheduleDisplay();
-    // }
+      schedule[dayIndex][type] = time;
+      updateScheduleDisplay();
+    }
 
     //--------------------------------------------------------------------------------------------------------------
     //******************************************** calibration ********************************************

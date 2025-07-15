@@ -13,14 +13,14 @@
 #include "nvs_config.h"
 
 //!! check in practice if this value is good
-#define DELAY_BETWEEN_STEPS  10 // milliseconds
+#define DELAY_BETWEEN_STEPS_MS  5
 
 blinds_configuration_t blinds_config = {
     .phase_pattern = { 
     {1, 0, 0, 0},
     {0, 1, 0, 0},
     {0, 0, 1, 0},
-    {0, 0, 0, 1} 
+    {0, 0, 0, 1}
     },
     .pins_blind_big = {
     BIG_PIN1,
@@ -39,13 +39,13 @@ blinds_configuration_t blinds_config = {
 blind_parameters_t big_blind_parameters = {
     .max_down_position = 0,
     .current_steps_state = 0,
-    .status = REQIRED_CALIBRATION
+   // .status = REQIRED_CALIBRATION
 };
 
 blind_parameters_t small_blind_parameters = {
     .max_down_position = 0,
     .current_steps_state = 0,
-    .status = REQIRED_CALIBRATION
+    //.status = REQIRED_CALIBRATION
 };
 
 SemaphoreHandle_t big_blind_current_parameters_semaphore;
@@ -113,7 +113,7 @@ void calibration_blind(void *pvParameters) {
                 for (uint8_t j = 0; j < 4; j++) {
                     gpio_set_level(pind_blind[j], blinds_config.phase_pattern[currentStepOfMotor][j]);
                 }
-                vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS));
+                vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS_MS));
                 step_count++;
             }
             break;
@@ -121,6 +121,8 @@ void calibration_blind(void *pvParameters) {
         case DOWN:
             *max_down_position += steps_to_do;
             *current_steps_state += steps_to_do;
+            save_int_to_nvs(blind_model == BIG_BLIND ? "max_pos_big" : "max_pos_sml", *max_down_position);
+            save_int_to_nvs(blind_model == BIG_BLIND ? "cur_steps_big" : "cur_steps_sml", *current_steps_state);
 
             while (step_count < steps_to_do) {
                 currentStepOfMotor = (currentStepOfMotor + 3) % 4;
@@ -128,7 +130,7 @@ void calibration_blind(void *pvParameters) {
                 for (uint8_t j = 0; j < 4; j++) {
                     gpio_set_level(pind_blind[j], blinds_config.phase_pattern[currentStepOfMotor][j]);
                 }
-                vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS));
+                vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS_MS));
                 step_count++;
             }
             break;
@@ -136,7 +138,7 @@ void calibration_blind(void *pvParameters) {
         default:
             break;
     }
-
+    
     // turn off the motor
     for (uint8_t j = 0; j < 4; j++) {
         gpio_set_level(pind_blind[j], 0);
@@ -160,7 +162,7 @@ void rolling_blind(void *pvParameters) {
     blind_model_t blind_model;
     const uint8_t *pind_blind;
     direction direction = UP; // =UP for compilation, but it will be set later
-    int *max_down_position;
+
     int *current_steps_state;
     int steps_to_do;
     int steps_state_to_do;
@@ -169,7 +171,6 @@ void rolling_blind(void *pvParameters) {
     blind_model = param->blind_model;
     pind_blind = param->pind_blind;
     steps_state_to_do = param->steps_state_to_do;
-    max_down_position = param->max_down_position;
     current_steps_state = param->current_steps_state;
 
     esp_err_t block_check = block_semaphores(blind_model);
@@ -198,7 +199,7 @@ void rolling_blind(void *pvParameters) {
 
                 for (uint8_t j = 0; j < 4; j++) {
                     gpio_set_level(pind_blind[j], blinds_config.phase_pattern[currentStepOfMotor][j]);
-                    vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS));
+                    vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS_MS));
                 }
                 steps_count++;
             }
@@ -210,7 +211,7 @@ void rolling_blind(void *pvParameters) {
 
                 for (uint8_t j = 0; j < 4; j++) {
                     gpio_set_level(pind_blind[j], blinds_config.phase_pattern[currentStepOfMotor][j]);
-                    vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS));
+                    vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS_MS));
                 }
                 steps_count++;
             }
@@ -221,20 +222,12 @@ void rolling_blind(void *pvParameters) {
     }
 
     *current_steps_state = steps_state_to_do;
+    save_int_to_nvs(blind_model == BIG_BLIND ? "cur_steps_big" : "cur_steps_sml", *current_steps_state);
 
     // turn off the motor
     for (uint8_t j = 0; j < 4; j++) {
         gpio_set_level(pind_blind[j], 0);
     }
-
-    //TODO refactor this
-    // if(blind_model){
-    //     save_int_to_nvs("cur_steps_big", *current_step_state);
-    //     ESP_LOGI(TAG, "value of current_steps_big: %d", *current_step_state);
-    // }else{
-    //     save_int_to_nvs("cur_steps_sml", *current_step_state);
-    //     ESP_LOGI(TAG, "value of current_steps_small: %d", *current_step_state);
-    // }
 
     release_semaphores(blind_model);
 
@@ -281,36 +274,38 @@ void confirm_full_up_small_blind(void *pvParameters) {
         vTaskDelete(NULL);
 }
 
+// TODO values for scheduler
 void init_start_values(void *pvParameters){
 
-    //! max_steps_value is the same as max_down_position!!!!
     int32_t max_down_position_big = read_int_from_nvs("max_pos_big");
     int32_t max_down_position_small = read_int_from_nvs("max_pos_sml"); 
     int32_t current_steps_state_big;
     int32_t current_steps_state_small;
 
     if (max_down_position_big == 0) {
-        big_blind_parameters.status = REQIRED_CALIBRATION;
+
+        //big_blind_parameters.status = REQIRED_CALIBRATION;
     } else{
         current_steps_state_big = read_int_from_nvs("cur_steps_big");
         printf("current_step_state_big: %d\n", current_steps_state_big);
+        printf("max_down_position_big: %d\n", max_down_position_big);
 
         big_blind_parameters.max_down_position = max_down_position_big;
         big_blind_parameters.current_steps_state = current_steps_state_big;
-        big_blind_parameters.status = READY;
+       // big_blind_parameters.status = READY;
     }
 
     if (max_down_position_small == 0) {
-        small_blind_parameters.status = REQIRED_CALIBRATION;
+        //small_blind_parameters.status = REQIRED_CALIBRATION;
     }else {
         current_steps_state_small = read_int_from_nvs("cur_steps_sml");
         printf("current_step_state_small: %d\n", current_steps_state_small);
+        printf("max_down_position_small: %d\n", max_down_position_small);
 
         small_blind_parameters.max_down_position = max_down_position_small;
         small_blind_parameters.current_steps_state = current_steps_state_small;
-        small_blind_parameters.status = READY;
+        //small_blind_parameters.status = READY;
     }
-
 }
 
 esp_err_t block_semaphores(blind_model_t blind_model) {

@@ -17,7 +17,7 @@ extern SemaphoreHandle_t scheduleSemaphore;
 extern TimerHandle_t scheduleTimer;
 
 
-//void UpdateScheduleAndSetTimer(void* pvParameters);
+void UpdateScheduleAndSetTimer(void* pvParameters);
 
 /**
  * @brief Function to check the schedule and start the stepper motor. Checks every minute whether the blinds should be rolled up or unrolled.

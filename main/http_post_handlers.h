@@ -81,7 +81,6 @@ esp_err_t confirm_full_down_post_handler(httpd_req_t *req);
 
 /**
  * @brief Function handling the POST request for the "/schedule" endpoint.
- * TODO: provide a detailed description of the functionality.
  * 
  * @param req Pointer to the httpd_req structure containing request information.
  * @return Returns ESP_OK on success, or another error code on failure.

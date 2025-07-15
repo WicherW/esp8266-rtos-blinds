@@ -62,7 +62,7 @@ extern blinds_configuration_t blinds_config;
 typedef struct {
     int32_t current_steps_state;
     int max_down_position;
-    blind_status status;
+    //blind_status status; // ? remove if it is not needed
 }blind_parameters_t;
 
 extern blind_parameters_t big_blind_parameters;
