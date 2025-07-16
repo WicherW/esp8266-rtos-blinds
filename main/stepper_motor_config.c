@@ -199,8 +199,8 @@ void rolling_blind(void *pvParameters) {
 
                 for (uint8_t j = 0; j < 4; j++) {
                     gpio_set_level(pind_blind[j], blinds_config.phase_pattern[currentStepOfMotor][j]);
-                    vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS_MS));
                 }
+                vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS_MS));
                 steps_count++;
             }
             break;
@@ -211,8 +211,8 @@ void rolling_blind(void *pvParameters) {
 
                 for (uint8_t j = 0; j < 4; j++) {
                     gpio_set_level(pind_blind[j], blinds_config.phase_pattern[currentStepOfMotor][j]);
-                    vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS_MS));
                 }
+                vTaskDelay(pdMS_TO_TICKS(DELAY_BETWEEN_STEPS_MS));
                 steps_count++;
             }
             break;
