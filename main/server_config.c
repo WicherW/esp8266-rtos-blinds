@@ -5,7 +5,7 @@
 #include "project_config.h"
 #include "http_handlers.h"
 
-# define HANDLERS_COUNT 7
+# define HANDLERS_COUNT 10
 
 httpd_handle_t start_server(void) {
     httpd_handle_t server = NULL;
@@ -39,6 +39,16 @@ httpd_handle_t start_server(void) {
         if (err != ESP_OK) {
             ESP_LOGE(TAG_SERVER, "confirm_full_up_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
         }
+
+        err = httpd_register_uri_handler(server, &move_blind_t);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_SERVER, "move_blind_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
+        }
+
+        err = httpd_register_uri_handler(server, &after_calib_state_t);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_SERVER, "after_calib_state_t registration failed: %s (0x%x)", esp_err_to_name(err), err);
+        }      
 
         err = httpd_register_uri_handler(server, &big_dev_data_t);
         if (err != ESP_OK) {

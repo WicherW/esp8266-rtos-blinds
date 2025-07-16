@@ -62,7 +62,6 @@ extern blinds_configuration_t blinds_config;
 typedef struct {
     int32_t current_steps_state;
     int max_down_position;
-    //blind_status status; // ? remove if it is not needed
 }blind_parameters_t;
 
 extern blind_parameters_t big_blind_parameters;
@@ -76,6 +75,7 @@ typedef struct {
     int steps_to_do_calibration;
     int *max_down_position;
     int *current_steps_state;
+    bool increase_values;
 }blind_to_do_parameters_t;
 
 extern SemaphoreHandle_t big_blind_current_parameters_semaphore;
@@ -137,22 +137,6 @@ void confirm_full_down_big_blind(void *pvParameters);
  */
 void confirm_full_down_small_blind(void *pvParameters);
 
-
-/**
- * @brief Function to save the maximum steps value for the large blind.
- * 
- * @param pvParameters Pointer to parameters for the function.
- */
-void save_max_steps_value_big_blind(void *pvParameters);
-
-
-/**
- * @brief Function to save the maximum steps value for the small blind.
- * 
- * @param pvParameters Pointer to parameters for the function.
- */
-void save_max_steps_value_small_blind(void *pvParameters);
-
 /**
  * @brief Function to initialize the start values for the blinds.
  */
@@ -172,5 +156,13 @@ esp_err_t block_semaphores(blind_model_t blind_model);
  * @param blind_model The model of the blind (small or big).
  */
 void release_semaphores(blind_model_t blind_model);
+
+void full_up_after_calib_small_blind(void *pvParameters);
+
+void full_down_after_calib_small_blind(void *pvParameters);
+
+void full_up_after_calib_big_blind(void *pvParameters);
+
+void full_down_after_calib_big_blind(void *pvParameters);
 
 #endif

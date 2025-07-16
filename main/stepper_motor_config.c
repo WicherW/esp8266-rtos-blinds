@@ -12,7 +12,6 @@
 #include "scheduler_config.h"
 #include "nvs_config.h"
 
-//!! check in practice if this value is good
 #define DELAY_BETWEEN_STEPS_MS  5
 
 blinds_configuration_t blinds_config = {
@@ -39,13 +38,11 @@ blinds_configuration_t blinds_config = {
 blind_parameters_t big_blind_parameters = {
     .max_down_position = 0,
     .current_steps_state = 0,
-   // .status = REQIRED_CALIBRATION
 };
 
 blind_parameters_t small_blind_parameters = {
     .max_down_position = 0,
     .current_steps_state = 0,
-    //.status = REQIRED_CALIBRATION
 };
 
 SemaphoreHandle_t big_blind_current_parameters_semaphore;
@@ -90,6 +87,7 @@ void calibration_blind(void *pvParameters) {
     int steps_to_do;
     int *max_down_position;
     int *current_steps_state;
+    bool increase_values;
 
     blind_to_do_parameters_t *param = (blind_to_do_parameters_t *)pvParameters;
     blind_model = param->blind_model;
@@ -98,6 +96,7 @@ void calibration_blind(void *pvParameters) {
     max_down_position = param->max_down_position;
     current_steps_state = param->current_steps_state;
     steps_to_do = param->steps_to_do_calibration;
+    increase_values = param->increase_values;
 
     esp_err_t block_check = block_semaphores(blind_model);
     if(block_check != ESP_OK) {
@@ -119,10 +118,13 @@ void calibration_blind(void *pvParameters) {
             break;
 
         case DOWN:
-            *max_down_position += steps_to_do;
-            *current_steps_state += steps_to_do;
-            save_int_to_nvs(blind_model == BIG_BLIND ? "max_pos_big" : "max_pos_sml", *max_down_position);
-            save_int_to_nvs(blind_model == BIG_BLIND ? "cur_steps_big" : "cur_steps_sml", *current_steps_state);
+
+            if(increase_values){
+                *max_down_position += steps_to_do;
+                *current_steps_state += steps_to_do;
+                save_int_to_nvs(blind_model == BIG_BLIND ? "max_pos_big" : "max_pos_sml", *max_down_position);
+                save_int_to_nvs(blind_model == BIG_BLIND ? "cur_steps_big" : "cur_steps_sml", *current_steps_state);
+            }
 
             while (step_count < steps_to_do) {
                 currentStepOfMotor = (currentStepOfMotor + 3) % 4;
@@ -248,6 +250,8 @@ void confirm_full_up_big_blind(void *pvParameters) {
 
     big_blind_parameters.max_down_position = 0; 
     big_blind_parameters.current_steps_state = 0;
+    save_int_to_nvs("max_pos_big", 0);
+    save_int_to_nvs("cur_steps_big", 0);
 
     release_semaphores(BIG_BLIND);
 
@@ -268,7 +272,79 @@ void confirm_full_up_small_blind(void *pvParameters) {
     small_blind_parameters.max_down_position = 0;
     small_blind_parameters.current_steps_state = 0; 
 
+    save_int_to_nvs("max_pos_sml", 0);
+    save_int_to_nvs("cur_steps_sml", 0);
+
     release_semaphores(SMALL_BLIND);
+
+    cleanup:
+        vTaskDelete(NULL);
+}
+
+void full_up_after_calib_small_blind(void *pvParameters){
+    const char *TAG = "full_up_after_calib_small_blind";
+
+    esp_err_t block_check = block_semaphores(SMALL_BLIND);
+    if(block_check != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to block semaphores for small blind, goto cleanup");
+        goto cleanup;
+    }
+    small_blind_parameters.current_steps_state = 0;
+    save_int_to_nvs("cur_steps_sml", 0);
+
+    release_semaphores(SMALL_BLIND);
+
+    cleanup:
+        vTaskDelete(NULL);
+}
+
+void full_down_after_calib_small_blind(void *pvParameters){
+    const char *TAG = "full_down_after_calib_small_blind";
+
+    esp_err_t block_check = block_semaphores(SMALL_BLIND);
+    if(block_check != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to block semaphores for small blind, goto cleanup");
+        goto cleanup;
+    }
+    small_blind_parameters.current_steps_state = small_blind_parameters.max_down_position;
+    save_int_to_nvs("cur_steps_sml", small_blind_parameters.max_down_position);
+    release_semaphores(SMALL_BLIND);
+
+    cleanup:
+        vTaskDelete(NULL);
+}
+
+void full_up_after_calib_big_blind(void *pvParameters){
+    const char *TAG = "full_up_after_calib_big_blind";
+
+    esp_err_t block_check = block_semaphores(BIG_BLIND);
+    if(block_check != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to block semaphores for big blind, goto cleanup");
+        goto cleanup;
+    }
+    
+    big_blind_parameters.current_steps_state = 0;
+    save_int_to_nvs("cur_steps_big", 0);
+
+    release_semaphores(BIG_BLIND);
+
+    cleanup:
+        vTaskDelete(NULL);
+}
+
+void full_down_after_calib_big_blind(void *pvParameters){
+    const char *TAG = "full_down_after_calib_big_blind";
+
+    esp_err_t block_check = block_semaphores(BIG_BLIND);
+    if(block_check != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to block semaphores for big blind, goto cleanup");
+        goto cleanup;
+    }
+    
+    big_blind_parameters.current_steps_state = big_blind_parameters.max_down_position;
+    save_int_to_nvs("cur_steps_big", big_blind_parameters.max_down_position);
+
+    release_semaphores(BIG_BLIND);
 
     cleanup:
         vTaskDelete(NULL);

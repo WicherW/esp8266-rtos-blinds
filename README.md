@@ -7,6 +7,7 @@ This project uses Docker to simplify the development environment setup.
 
 There are two blinds controlled in this project: one larger and one smaller. The sizes are fixed and hardcoded in the firmware.
 
+
 ## WiFi Credentials Setup
 
 1. Make a file named `wifi_data.h` in `/main` folder.
@@ -19,11 +20,14 @@ There are two blinds controlled in this project: one larger and one smaller. The
 #define WIFI_PASS "PASS"
 
 #endif
-
 ```
+
+## Initial Calibration
+After the first startup, when the blind is fully raised, make sure `max_down_position` and `current_step_state` are zeroed by clicking "Full Up". Then, run the blind all the way down using calibration mode by entering the number of steps (1000 steps is approximately 4 cm). After this operation, the sliders can be used freely.
 
 ## Pinout 
 TODO :)
+
 
 ## Docker - Windows
 This project uses Docker, so make sure you have Docker and WSL2 installed.
