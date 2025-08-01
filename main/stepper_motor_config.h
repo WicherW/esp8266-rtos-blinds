@@ -148,14 +148,14 @@ void init_start_values();
  * @param blind_model The model of the blind (small or big).
  * @return esp_err_t ESP_OK on success, or an error code on failure.
  */
-esp_err_t block_semaphores(blind_model_t blind_model);
+esp_err_t block_semaphore(blind_model_t blind_model);
 
 /**
  * @brief Function to release the semaphores for the blinds.
  * 
  * @param blind_model The model of the blind (small or big).
  */
-void release_semaphores(blind_model_t blind_model);
+void release_semaphore(blind_model_t blind_model);
 
 void full_up_after_calib_small_blind(void *pvParameters);
 

@@ -32,7 +32,6 @@ void app_main() {
   init_wifi();
   init_nvs();
   init_spiffs();
-
   init_start_values();
 
   ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &connect_handler, &server));
@@ -40,5 +39,16 @@ void app_main() {
 
   server = start_server();
 
-  sntp_initialize(); //! TODO It might not work if the ESP is disconnected from WiFi or the internet
+  sntp_initialize();
+
+  scheduleTimer = xTimerCreate("ScheduleTimer", pdMS_TO_TICKS(60000), pdTRUE, (void *)0, schedule_timer_callback);
+  if (scheduleTimer == NULL) {
+      ESP_LOGE("app_main", "Failed to create schedule timer!");
+  } else {
+      if (xTimerStart(scheduleTimer, 0) != pdPASS) {
+          ESP_LOGE("app_main", "Failed to start schedule timer!");
+      } else {
+          ESP_LOGI("app_main", "SCHEDULE TIMER STARTED SUCCESSFULLY");
+      }
+  }
 }

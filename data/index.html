@@ -72,6 +72,12 @@
         .schedule{
             font-size: large;
         }
+        #scheduleDisplay {
+            text-align: left;
+            width: 280px;
+            margin: 0 auto;
+            white-space: pre;
+        }
     </style>
 </head>
 <body>
@@ -102,7 +108,7 @@
 
         </section>
 
-        <section class="schedule"> // TODO 
+        <section class="schedule">
 
             <h2>Schedule</h2>
 
@@ -118,20 +124,20 @@
             <br>
 
             <select id="daySelect">
-            <option value="0">Monday</option>
-            <option value="1">Tuesday</option>
-            <option value="2">Wednesday</option>
-            <option value="3">Thursday</option>
-            <option value="4">Friday</option>
-            <option value="5" selected>Saturday</option>
-            <option value="6">Sunday</option>
+            <option value="0">Sunday</option>
+            <option value="1">Monday</option>
+            <option value="2">Tuesday</option>
+            <option value="3">Wednesday</option>
+            <option value="4">Thursday</option>
+            <option value="5">Friday</option>
+            <option value="6" selected>Saturday</option>
             </select><br><br>
   
             <input type="time" id="timeUp">
-            <button onclick="setTime('start')">Set time to roll up</button><br>
+            <button onclick="setTime('open_time')">Set time to roll up</button><br>
             <br>
             <input type="time" id="timeDown">
-            <button onclick="setTime('end')">Set time to roll down</button>
+            <button onclick="setTime('close_time')">Set time to roll down</button>
 
         </section>
 
@@ -187,13 +193,8 @@
             <button id="smallDevdataButton">pull data</button>
 
         </section>
-
-
-       </main>
-    
-
-
-       
+        
+       </main>  
 </body>
 </html>
 <script>
@@ -202,8 +203,6 @@
     let IP = '192.168.0.117'; //172 - my second esp IP
 
     function valuesJsonPOST(valuesJSON, reference) {
-
-
         fetch('http://'+IP+'/'+reference+'', {
             method: 'POST',
             headers: {
@@ -215,7 +214,7 @@
             if (!response.ok) {
                 throw new Error('Connection error');
             }
-            return response.json(); 
+            return response.text(); 
         })
         .then(result => {
             console.log('Success:', result); 
@@ -225,7 +224,6 @@
             console.error('Error:', error);
         });
     }
-
 
     function smallSliderPOST(){
         let smallSlider = document.getElementById("smallSliderID").value;
@@ -260,30 +258,30 @@
     //********************************************** schedule ***************************************************
 
     const schedule = [
-    { day: "Monday",        start: "--:--", end: "--:--" },
-    { day: "Tuesday",       start: "--:--", end: "--:--" },
-    { day: "Wednesday",     start: "--:--", end: "--:--" },
-    { day: "Thursday",      start: "--:--", end: "--:--" },
-    { day: "Friday",        start: "--:--", end: "--:--" },
-    { day: "Saturday",      start: "--:--", end: "--:--" },
-    { day: "Sunday",        start: "--:--", end: "--:--" }
+        { day: 0, open_time: "--:--", close_time: "--:--" }, // Sunday
+        { day: 1, open_time: "--:--", close_time: "--:--" }, // Monday
+        { day: 2, open_time: "--:--", close_time: "--:--" }, // Tuesday
+        { day: 3, open_time: "--:--", close_time: "--:--" }, // Wednesday
+        { day: 4, open_time: "--:--", close_time: "--:--" }, // Thursday
+        { day: 5, open_time: "--:--", close_time: "--:--" }, // Friday
+        { day: 6, open_time: "--:--", close_time: "--:--" }  // Saturday
     ];
-
+ 
     function updateScheduleDisplay() {
-      const days = [
-        "Monday", "Tuesday", "Wendesday",
-        "Thursday", "Friday", "Saturday", "Sunday"
-      ];
+        const days = [
+        "Sunday", "Monday", "Tuesday",
+        "Wednesday", "Thursday", "Friday", "Saturday"
+        ];
       const display = schedule.map((entry, i) =>
-        `${days[i]}: ${entry.start} / ${entry.end}`
+        `${days[i]}: ${entry.open_time} / ${entry.close_time}`
       ).join('\n');
       document.getElementById("scheduleDisplay").textContent = display;
-      valuesJsonPOST(schedule, 'schedule'); // Send the schedule to the server
+      valuesJsonPOST(schedule, 'schedule');
     }
 
     function setTime(type) {
       const dayIndex = parseInt(document.getElementById("daySelect").value);
-      const time = type === 'start'
+      const time = type === 'open_time'
         ? document.getElementById("timeUp").value
         : document.getElementById("timeDown").value;
 
@@ -401,27 +399,37 @@
 
 
     function fillInputs() {
-    //let smallFlag = 0, bigFlag = 0;
-
     fetch('fillinputs')
         .then(response => response.json())
         .then(data => {
-        document.getElementById('smallSliderID').max = data.smallmaxdownposition;
-        document.getElementById('bigSliderID').max = data.bigmaxdownposition;
-        console.log(`Max values - Small: ${data.smallmaxdownposition}, Big: ${data.bigmaxdownposition}`);
+            document.getElementById('smallSliderID').max = data.smallmaxdownposition;
+            document.getElementById('bigSliderID').max = data.bigmaxdownposition;
+            console.log(`Max values - Small: ${data.smallmaxdownposition}, Big: ${data.bigmaxdownposition}`);
+            
+            data.schedule.forEach(entry => {
+                const index = schedule.findIndex(e => e.day === entry.day);
+                if (index !== -1) {
+                    schedule[index].open_time = entry.open_time || "--:--";
+                    schedule[index].close_time = entry.close_time || "--:--";
+                }
+            });
+
+            const days = [
+                "Sunday", "Monday", "Tuesday",
+                "Wednesday", "Thursday", "Friday", "Saturday"
+            ];
+
+            const display = schedule.map((entry, i) =>
+                `${days[i]}: ${entry.open_time} / ${entry.close_time}`
+            ).join('\n');
+
+            document.getElementById("scheduleDisplay").textContent = display;
+        
+
 
         /* TODO refactor this
         document.getElementById('malaSuwakID').value = data.malaSuwakValue;
         document.getElementById('duzaSuwakID').value = data.duzaSuwakValue;
-
-        smallFlag = data.smallFlag;
-        bigFlag = data.bigFlag;
-                        
-        console.log(`smallFlag: ${smallFlag}, bigFlag: ${bigFlag}`); // Debugging
-
-        if (smallFlag == 1 || bigFlag == 1) {
-            alert("Jedna z rolet pracowała i zostało jej w trakcie odłączone zasilanie!");
-        }
         */
 
         })

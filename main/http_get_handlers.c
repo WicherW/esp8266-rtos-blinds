@@ -14,7 +14,7 @@
 #include "stepper_motor_config.h"
 #include "nvs_config.h"
 
-#define JSON_BUFFER_SIZE 180
+#define JSON_BUFFER_SIZE 2048
 
 esp_err_t html_get_handler(httpd_req_t *req) {
     char *file_buffer = NULL;
@@ -41,7 +41,7 @@ esp_err_t devdata_get_feedback_smallblind_handler(httpd_req_t *req) {
     
     const char *TAG = "smallBlindDevDataHandler";
 
-    esp_err_t block_check = block_semaphores(SMALL_BLIND);
+    esp_err_t block_check = block_semaphore(SMALL_BLIND);
     if(block_check != ESP_OK) {
         ESP_LOGE(TAG, "Failed to block semaphores for small blind");
         return ESP_FAIL;
@@ -52,7 +52,7 @@ esp_err_t devdata_get_feedback_smallblind_handler(httpd_req_t *req) {
     char *json_string = malloc(JSON_BUFFER_SIZE);
     if (json_string == NULL) {
         ESP_LOGE(TAG, "error of malloc!");
-        release_semaphores(SMALL_BLIND);
+        release_semaphore(SMALL_BLIND);
         return ESP_FAIL;
     }
 
@@ -68,7 +68,7 @@ esp_err_t devdata_get_feedback_smallblind_handler(httpd_req_t *req) {
     }
 
     free(json_string);
-    release_semaphores(SMALL_BLIND);
+    release_semaphore(SMALL_BLIND);
     ESP_LOGI(TAG, "semaphore has been released!");
     return ret;
 }
@@ -84,7 +84,7 @@ esp_err_t devdata_get_feedback_bigblind_handler(httpd_req_t *req) {
 
     const char *TAG = "bigBlindDevDataHandler";
 
-    esp_err_t block_check = block_semaphores(BIG_BLIND);
+    esp_err_t block_check = block_semaphore(BIG_BLIND);
     if(block_check != ESP_OK) {
         ESP_LOGE(TAG, "Failed to block semaphores for big blind");
         return ESP_FAIL;
@@ -95,7 +95,7 @@ esp_err_t devdata_get_feedback_bigblind_handler(httpd_req_t *req) {
     char *json_string = malloc(JSON_BUFFER_SIZE);
     if (json_string == NULL) {
         ESP_LOGE(TAG, "error of malloc!");
-        release_semaphores(BIG_BLIND);
+        release_semaphore(BIG_BLIND);
         return ESP_FAIL;
     }
 
@@ -111,7 +111,7 @@ esp_err_t devdata_get_feedback_bigblind_handler(httpd_req_t *req) {
     }
 
     free(json_string);
-    release_semaphores(BIG_BLIND);
+    release_semaphore(BIG_BLIND);
     ESP_LOGI(TAG, "semaphore has been released!");
     return ret;
 }
@@ -140,9 +140,7 @@ esp_err_t fillinputs_get_feedback_handler(httpd_req_t *req) {
     }
 
     ESP_LOGI(TAG, "semaphores have been taken successfully!");
-    // // !! move to the other function
-    // int32_t smallFlag = read_int_from_nvs("small");
-    // int32_t bigFlag = read_int_from_nvs("big");
+
 
     json_string = malloc(JSON_BUFFER_SIZE);
     if (json_string == NULL) {
@@ -150,10 +148,37 @@ esp_err_t fillinputs_get_feedback_handler(httpd_req_t *req) {
         goto release_both;
     }
 
-    snprintf(json_string, JSON_BUFFER_SIZE, 
-        "{\"smallmaxdownposition\":%i,\"bigmaxdownposition\":%i}", 
-        small_blind_parameters.max_down_position, 
-        big_blind_parameters.max_down_position);
+    char schedule_part[1500];
+    char entry[128];        
+
+    schedule_part[0] = '\0';
+
+    for (int i = 0; i < 7; i++) {
+        if (scheduleArray[i].open_time.tm_hour >= 0 && scheduleArray[i].close_time.tm_hour >= 0) {
+            snprintf(entry, sizeof(entry),
+                     "{\"day\":%d,\"open_time\":\"%02d:%02d\",\"close_time\":\"%02d:%02d\"}",
+                     scheduleArray[i].day,
+                     scheduleArray[i].open_time.tm_hour, scheduleArray[i].open_time.tm_min,
+                     scheduleArray[i].close_time.tm_hour, scheduleArray[i].close_time.tm_min);
+        } else {
+            snprintf(entry, sizeof(entry),
+                     "{\"day\":%d,\"open_time\":\"--:--\",\"close_time\":\"--:--\"}",
+                     scheduleArray[i].day);
+        }
+
+        strcat(schedule_part, entry);
+        if (i < 6) strcat(schedule_part, ",");
+    }
+
+
+    snprintf(json_string, JSON_BUFFER_SIZE,
+             "{\"smallmaxdownposition\":%d,"
+             "\"bigmaxdownposition\":%d,"
+             "\"schedule\":[%s]}",
+             small_blind_parameters.max_down_position,
+             big_blind_parameters.max_down_position,
+             schedule_part);
+
 
     if (httpd_resp_send(req, json_string, strlen(json_string)) != ESP_OK) {
         ESP_LOGE(TAG, "JSON respond sending failed!");
@@ -180,4 +205,4 @@ httpd_uri_t fill_inputs_t = {
     .handler   = fillinputs_get_feedback_handler,
     .user_ctx  = NULL
 };
-// TODO -------------------------------------
+// TODO -----------------------------------------------

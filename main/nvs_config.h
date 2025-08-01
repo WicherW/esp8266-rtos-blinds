@@ -5,6 +5,7 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "esp_err.h"
+#include "scheduler_config.h"
 
 
 /**
@@ -30,6 +31,8 @@ void save_int_to_nvs(const char *key, int32_t value);
  */
 int32_t read_int_from_nvs(const char *key);
 
+esp_err_t read_schedule_from_nvs();
 
+esp_err_t save_schedule_to_nvs();
 #endif
 

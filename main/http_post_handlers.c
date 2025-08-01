@@ -205,173 +205,38 @@ httpd_uri_t confirm_full_up_t = {
 };
 
 esp_err_t schedule_post_handler(httpd_req_t *req) {
-
     ESP_LOGI("harmonogramposthandler", "weszlo na poczatek");
     
-    // Alokacja pamięci na dane POST
     char *total_data = (char *)pvPortMalloc(req->content_len + 1);
     if (total_data == NULL) {
         return ESP_ERR_NO_MEM;
     }
+    memset(total_data, 0, req->content_len + 1);
 
-    ESP_LOGI("harmonogramposthandler", "length:%d ",req->content_len);
-    
+    ESP_LOGI("harmonogramposthandler", "after memory allocation, content_len: %d", req->content_len);
+
     int ret;
     int remaining = req->content_len;
-    int received = 0;  // Śledzi liczbę odebranych danych
-
-    ESP_LOGI("harmonogramposthandler", "przed whilem odbierania danych");
+    int received = 0;
 
     while (remaining > 0) {
-        // Odebranie części danych POST
         ret = httpd_req_recv(req, total_data + received, remaining);
         if (ret <= 0) {
-            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
-                continue;  // Timeout, spróbuj ponownie
-            }
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) continue;
             free(total_data);
-            return ESP_FAIL;  // Inny błąd
+            return ESP_FAIL;
         }
         received += ret;
         remaining -= ret;
     }
 
+    ESP_LOGI("harmonogramposthandler", "after receiving data, received: %d, total_data: %s", received, total_data);
+
     total_data[received] = '\0';
 
-    ESP_LOGI("harmonogramposthandler", "Zawartosc total_data: %s", total_data);
-    ESP_LOGI("harmonogramposthandler", "przed stworzeniem taska");
-    
+    xTaskCreate(&parse_schedule_json_from_client, "calibrateRollblindDownBig", 2048, (void*)total_data, 3, NULL);
 
-    if (xSemaphoreTake(scheduleSemaphore, portMAX_DELAY) == pdTRUE) {
-        ESP_LOGI("harmonogramposthandler", "semafor zablokowany");
-    } else {
-        ESP_LOGI("harmonogramposthandler", "nie udalo sie zablokowac semafora");
-        return ESP_FAIL;
-    }
-
-    cJSON *json = cJSON_Parse(total_data);
-
-    if (json == NULL) {
-        ESP_LOGE("harmonogramposthandler", "Nie udalo sie sparsowac JSON-a");
-        xSemaphoreGive(scheduleSemaphore);
-        vPortFree(total_data);
-        return ESP_FAIL;
-    }
-
-    ESP_LOGI("harmonogramposthandler", "Free heap size: %d", esp_get_free_heap_size());
-    
-    ESP_LOGI("harmonogramposthandler", "po udanym parsowaniu JSON-a");
-
-    cJSON *ponDown = cJSON_GetObjectItem(json, "ponTimeDown");
-    cJSON *ponUp = cJSON_GetObjectItem(json, "ponTimeUp");
-
-    cJSON *wtDown = cJSON_GetObjectItem(json, "wtTimeDown");
-    cJSON *wtUp = cJSON_GetObjectItem(json, "wtTimeUp");
-
-    cJSON *srDown = cJSON_GetObjectItem(json, "srTimeDown");
-    cJSON *srUp = cJSON_GetObjectItem(json, "srTimeUp");
-
-    cJSON *czwDown = cJSON_GetObjectItem(json, "czwTimeDown");
-    cJSON *czwUp = cJSON_GetObjectItem(json, "czwTimeUp");
-
-    cJSON *ptDown = cJSON_GetObjectItem(json, "ptTimeDown");
-    cJSON *ptUp = cJSON_GetObjectItem(json, "ptTimeUp");
-
-    cJSON *sbDown = cJSON_GetObjectItem(json, "sbTimeDown");
-    cJSON *sbUp = cJSON_GetObjectItem(json, "sbTimeUp");
-
-    cJSON *ndzDown = cJSON_GetObjectItem(json, "ndzTimeDown");
-    cJSON *ndzUp = cJSON_GetObjectItem(json, "ndzTimeUp");
-
-    ESP_LOGI("harmonogramposthandler", "po fali cJSONow getobjectitem");
-
-
-    if (!ponDown || !ponUp || !wtDown || !wtUp || !srDown || !srUp ||
-    !czwDown || !czwUp || !ptDown || !ptUp || !sbDown || !sbUp ||
-    !ndzDown || !ndzUp) {
-        ESP_LOGI("harmonogramposthandler", "Brak wymaganych pol w JSON");
-    // Obsługa błędu
-    }else{
-        ESP_LOGI("harmonogramposthandler", "Wszystkie pola sa!");
-    }
-
-    ESP_LOGI("harmonogramposthandler", "po kontroli ifem");
-    
-    //Niedziela
-    scheduleArray[0].day = 0;
-    sscanf(cJSON_GetStringValue(ndzUp), "%d:%d", &scheduleArray[0].open_time.tm_hour, &scheduleArray[0].open_time.tm_min);
-    sscanf(cJSON_GetStringValue(ndzDown), "%d:%d", &scheduleArray[0].close_time.tm_hour, &scheduleArray[0].close_time.tm_min);
-
-    // Poniedziałek
-    scheduleArray[1].day = 1;
-    sscanf(cJSON_GetStringValue(ponUp), "%d:%d", &scheduleArray[1].open_time.tm_hour, &scheduleArray[1].open_time.tm_min);
-    sscanf(cJSON_GetStringValue(ponDown), "%d:%d", &scheduleArray[1].close_time.tm_hour, &scheduleArray[1].close_time.tm_min);
-
-    // Wtorek
-    scheduleArray[2].day = 2;
-    sscanf(cJSON_GetStringValue(wtUp), "%d:%d", &scheduleArray[2].open_time.tm_hour, &scheduleArray[2].open_time.tm_min);
-    sscanf(cJSON_GetStringValue(wtDown), "%d:%d", &scheduleArray[2].close_time.tm_hour, &scheduleArray[2].close_time.tm_min);
-
-    // Środa
-    scheduleArray[3].day = 3;
-    sscanf(cJSON_GetStringValue(srUp), "%d:%d", &scheduleArray[3].open_time.tm_hour, &scheduleArray[3].open_time.tm_min);
-    sscanf(cJSON_GetStringValue(srDown), "%d:%d", &scheduleArray[3].close_time.tm_hour, &scheduleArray[3].close_time.tm_min);
-
-    // Czwartek
-    scheduleArray[4].day = 4;
-    sscanf(cJSON_GetStringValue(czwUp), "%d:%d", &scheduleArray[4].open_time.tm_hour, &scheduleArray[4].open_time.tm_min);
-    sscanf(cJSON_GetStringValue(czwDown), "%d:%d", &scheduleArray[4].close_time.tm_hour, &scheduleArray[4].close_time.tm_min);
-
-    // Piątek
-    scheduleArray[5].day = 5;
-    sscanf(cJSON_GetStringValue(ptUp), "%d:%d", &scheduleArray[5].open_time.tm_hour, &scheduleArray[5].open_time.tm_min);
-    sscanf(cJSON_GetStringValue(ptDown), "%d:%d", &scheduleArray[5].close_time.tm_hour, &scheduleArray[5].close_time.tm_min);
-
-    // Sobota
-    scheduleArray[6].day = 6;
-    sscanf(cJSON_GetStringValue(sbUp), "%d:%d", &scheduleArray[6].open_time.tm_hour, &scheduleArray[6].open_time.tm_min);
-    sscanf(cJSON_GetStringValue(sbDown), "%d:%d", &scheduleArray[6].close_time.tm_hour, &scheduleArray[6].close_time.tm_min);
-
-    ESP_LOGI("harmonogramposthandler", "po uzupelnieniu struktury");
-
-
-    // Zwalnianie pamięci
-    cJSON_Delete(json);
-    vPortFree(total_data);
-
-    xSemaphoreGive(scheduleSemaphore);
-
-    ESP_LOGI("harmonogramposthandler", "zwolnieniu semafora");
-
-    // Tworzenie i uruchomienie timera
-    if (scheduleTimer == NULL) {
-
-        ESP_LOGI("harmonogramposthandler", "jest NULL, tworzenie timera!");
-
-        scheduleTimer = xTimerCreate("MyTimer", pdMS_TO_TICKS(60000), pdTRUE, (void *)0, schedule_timer_callback);
-
-        ESP_LOGI("harmonogramposthandler", "timer stworzony");
-
-        if (scheduleTimer != NULL) {
-
-            ESP_LOGI("harmonogramposthandler", "timer nie jest rowny null");
-
-            if (xTimerStart(scheduleTimer, 0) != pdPASS) {
-                ESP_LOGI("harmonogramposthandler", "Nie udalo sie uruchomic timera.");
-            }else{
-                ESP_LOGI("harmonogramposthandler", "timer zostal odpalony");
-            }
-        } else {
-            ESP_LOGI("harmonogramposthandler", "Nie udalo sie stworzyc timera.");
-        }
-    } else{
-        ESP_LOGI("harmonogramposthandler", "timer jest juz stworzony, zostala tylko zaaktualizowana struktura z godzinami");
-    }
-    
-    // Odpowiedź HTTP (może być zależna od implementacji
-    httpd_resp_send_chunk(req, NULL, 0);  // Zakończenie odpowiedzi
-
-    ESP_LOGI("harmonogramposthandler", "przed return OK");
+    httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
 }
 httpd_uri_t schedule_t = {
