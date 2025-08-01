@@ -1,7 +1,5 @@
 # ESP8266 RTOS-SDK Blinds Controller
 
-### Warning: This project is under active development and may not be stable yet.
-
 A simple Wi-Fi controlled blinds driver based on ESP8266 using RTOS SDK.  
 This project uses Docker to simplify the development environment setup.
 
